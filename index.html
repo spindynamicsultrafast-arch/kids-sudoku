@@ -1,4 +1,5 @@
-<title>두근두근 그림 스도쿠</title>
+<title>두근두근 퍼즐랜드</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <style>
   :root{
     --sky1:#ffe6f2; --sky2:#e6f0ff; --card:#fffdfa;
@@ -14,7 +15,6 @@
     display:flex; flex-direction:column; align-items:center;
     min-height:100vh; user-select:none;
   }
-  /* floating background bits */
   .float{position:fixed; font-size:2rem; opacity:.35; pointer-events:none; z-index:0;
     animation:drift linear infinite;}
   @keyframes drift{
@@ -25,20 +25,35 @@
     .float{display:none;}
     *{animation-duration:.01s !important;}
   }
-  header{z-index:1; text-align:center; padding:14px 10px 4px;}
-  h1{margin:0; font-size:clamp(1.5rem,5vw,2.2rem); letter-spacing:1px;
-     color:var(--accent); text-shadow:0 2px 0 #fff;}
-  .stars{font-size:1.1rem; min-height:1.5rem; letter-spacing:2px;}
-  .hud{z-index:1; display:flex; gap:10px; align-items:center; margin:4px 0 10px;}
+  .screen{display:none; flex-direction:column; align-items:center; z-index:1; width:100%; padding-bottom:90px;}
+  .screen.on{display:flex;}
+  h1{margin:14px 0 4px; font-size:clamp(1.5rem,5vw,2.2rem); letter-spacing:1px;
+     color:var(--accent); text-shadow:0 2px 0 #fff; text-align:center;}
+  .hud{display:flex; gap:10px; align-items:center; margin:8px 0 12px; flex-wrap:wrap; justify-content:center;}
   .hud .lv{background:var(--card); border:3px solid var(--line); border-radius:999px;
     padding:6px 18px; font-weight:bold; font-size:1.1rem; box-shadow:0 3px 0 var(--line);}
   button.round{background:var(--card); border:3px solid var(--line); border-radius:999px;
-    width:46px; height:46px; font-size:1.3rem; cursor:pointer; box-shadow:0 3px 0 var(--line);}
+    width:46px; height:46px; font-size:1.3rem; cursor:pointer; box-shadow:0 3px 0 var(--line); font-family:inherit;}
   button.round:active{transform:translateY(2px); box-shadow:none;}
+  #sndBtn{position:fixed; top:10px; right:10px; z-index:4;}
 
-  #board{z-index:1; display:grid; gap:5px; background:var(--card);
-    padding:12px; border-radius:24px; border:4px solid var(--line);
-    box-shadow:0 8px 24px rgba(255,123,172,.25);}
+  /* home */
+  #home .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,170px)); gap:16px;
+    justify-content:center; padding:10px; max-width:420px;}
+  .gcard{background:var(--card); border:4px solid var(--line); border-radius:24px;
+    padding:18px 10px 14px; text-align:center; cursor:pointer;
+    box-shadow:0 6px 0 var(--line); transition:transform .12s;}
+  .gcard:active{transform:translateY(4px); box-shadow:none;}
+  .gcard .ico{font-size:3rem; display:block; margin-bottom:6px;}
+  .gcard .nm{font-weight:bold; font-size:1.05rem;}
+  .gcard .pg{font-size:.85rem; color:#b78fb0; margin-top:4px;}
+
+  /* generic board card */
+  .boardCard{background:var(--card); padding:12px; border-radius:24px; border:4px solid var(--line);
+    box-shadow:0 8px 24px rgba(255,123,172,.25); touch-action:none;}
+
+  /* sudoku */
+  #sdBoard{display:grid; gap:5px;}
   .cell{
     width:var(--cs); height:var(--cs); border-radius:14px;
     display:flex; align-items:center; justify-content:center;
@@ -48,141 +63,130 @@
   .cell.given{background:#fdfdfd; border-color:#e9e4ee; cursor:default;}
   .cell.empty{border-style:dashed; border-color:var(--accent2); background:#f2f8ff;}
   .cell.sel{outline:4px solid var(--accent); outline-offset:-2px; transform:scale(1.06);}
-  .cell.brb{border-bottom:none;} /* spacing handled by gap classes below */
   .gapR{margin-right:8px;} .gapB{margin-bottom:8px;}
-  .cell.pop{animation:pop .35s;}
+  .pop{animation:pop .35s;}
   @keyframes pop{0%{transform:scale(.3);}60%{transform:scale(1.25);}100%{transform:scale(1);}}
-  .cell.shake{animation:shake .4s;}
+  .shake{animation:shake .4s;}
   @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-7px);}
     50%{transform:translateX(7px);}75%{transform:translateX(-4px);}}
-
-  #palette{z-index:1; display:flex; gap:10px; margin:16px 0 8px; flex-wrap:wrap; justify-content:center;}
+  #sdPalette{display:flex; gap:10px; margin:16px 0 8px; flex-wrap:wrap; justify-content:center;}
   .pal{width:60px; height:60px; font-size:2rem; border-radius:18px;
     background:var(--card); border:3px solid var(--line); cursor:pointer;
-    box-shadow:0 4px 0 var(--line); transition:transform .12s;}
+    box-shadow:0 4px 0 var(--line); transition:transform .12s; font-family:inherit;}
   .pal:active{transform:translateY(3px); box-shadow:none;}
   .pal.selP{border-color:var(--accent); background:#fff0f7; transform:scale(1.1);}
 
-  #mascot{z-index:1; display:flex; align-items:center; gap:8px; margin-bottom:20px;
+  /* rush hour */
+  #rushWrap{position:relative;}
+  #rushBoard{position:relative; display:grid; grid-template-columns:repeat(6,var(--rc)); gap:4px;}
+  .rcell{width:var(--rc); height:var(--rc); border-radius:10px; background:#fff2f8; border:2px solid #ffd9ea;}
+  .piece{position:absolute; border-radius:14px; display:flex; align-items:center; justify-content:center;
+    font-size:calc(var(--rc)*.6); cursor:grab; border:3px solid rgba(255,255,255,.7);
+    box-shadow:0 3px 6px rgba(0,0,0,.12); transition:box-shadow .15s; z-index:2; touch-action:none;}
+  .piece.hero{background:#ffb1cf; z-index:3;}
+  .piece.drag{box-shadow:0 8px 16px rgba(0,0,0,.2); cursor:grabbing;}
+  #rushExit{position:absolute; font-size:1.6rem; pointer-events:none;}
+  .slideOut{transition:left .6s ease-in !important;}
+
+  /* flow */
+  #flowBoard{display:grid; gap:4px;}
+  .fcell{width:var(--fc); height:var(--fc); border-radius:12px; background:#fff2f8; border:2px solid #ffd9ea;
+    display:flex; align-items:center; justify-content:center; font-size:calc(var(--fc)*.6);}
+  .fcell .dot{width:35%; height:35%; border-radius:50%;}
+  .fcell.fdone{animation:pop .35s;}
+
+  /* sokoban */
+  #sokoBoard{display:grid; gap:3px;}
+  .scell{width:var(--sc); height:var(--sc); border-radius:8px;
+    display:flex; align-items:center; justify-content:center; font-size:calc(var(--sc)*.68);}
+  .scell.floor{background:#fff7fb;}
+  .scell.wall{background:linear-gradient(135deg,#ffc4dc,#f9a8c9); border:2px solid #f393bd; border-radius:6px;}
+  .scell.plate{background:#fff7fb; box-shadow:inset 0 0 0 4px #ffd93d; }
+  .scell .onPlate{filter:drop-shadow(0 0 6px #ffd93d);}
+  #dpad{display:grid; grid-template-columns:repeat(3,56px); gap:6px; margin-top:14px;}
+  #dpad button{height:52px; font-size:1.4rem;}
+  #dpad .blank{visibility:hidden;}
+
+  /* mascot + overlay */
+  #mascot{position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
+    z-index:3; display:flex; align-items:center; gap:8px;
     background:var(--card); border:3px solid var(--line); border-radius:20px;
-    padding:8px 16px; max-width:90vw;}
+    padding:8px 16px; max-width:92vw; box-shadow:0 4px 10px rgba(255,123,172,.2);}
   #mascot .face{font-size:2rem;}
   #mascot .say{font-size:1rem; font-weight:bold;}
-
-  /* win overlay */
   #win{position:fixed; inset:0; background:rgba(255,230,242,.85); z-index:5;
     display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px;}
   #win.show{display:flex;}
   #win .big{font-size:3rem; animation:pop .5s;}
   #win h2{margin:0; font-size:2rem; color:var(--accent);}
-  #win button{font-size:1.3rem; padding:14px 30px; border-radius:999px; cursor:pointer;
-    background:var(--accent); color:#fff; border:none; box-shadow:0 5px 0 #d55a8c; font-family:inherit; font-weight:bold;}
-  #win button:active{transform:translateY(3px); box-shadow:none;}
+  .bigBtn{font-size:1.3rem; padding:14px 30px; border-radius:999px; cursor:pointer;
+    background:var(--accent); color:#fff; border:none; box-shadow:0 5px 0 #d55a8c;
+    font-family:inherit; font-weight:bold;}
+  .bigBtn.alt{background:var(--accent2); box-shadow:0 5px 0 #5f9bd6;}
+  .bigBtn:active{transform:translateY(3px); box-shadow:none;}
   #confetti{position:fixed; inset:0; pointer-events:none; z-index:6;}
 </style>
 
-<header>
-  <h1>🌸 두근두근 그림 스도쿠 🌸</h1>
-  <div class="stars" id="stars"></div>
-</header>
-<div class="hud">
-  <div class="lv" id="lvLabel">레벨 1</div>
-  <button class="round" id="hintBtn" title="힌트">💡</button>
-  <button class="round" id="sndBtn" title="소리">🔊</button>
+<button class="round" id="sndBtn">🔊</button>
+
+<div class="screen on" id="home">
+  <h1>🌸 두근두근 퍼즐랜드 🌸</h1>
+  <div class="cards">
+    <div class="gcard" data-g="sudoku"><span class="ico">🍓</span><div class="nm">그림 스도쿠</div><div class="pg"></div></div>
+    <div class="gcard" data-g="rush"><span class="ico">🚗</span><div class="nm">주차장 탈출</div><div class="pg"></div></div>
+    <div class="gcard" data-g="flow"><span class="ico">🎨</span><div class="nm">동물 짝 잇기</div><div class="pg"></div></div>
+    <div class="gcard" data-g="soko"><span class="ico">🍪</span><div class="nm">쿠키 밀기</div><div class="pg"></div></div>
+  </div>
 </div>
-<div id="board"></div>
-<div id="palette"></div>
-<div id="mascot"><span class="face" id="mFace">🐰</span><span class="say" id="mSay">그림을 골라서 빈칸을 채워봐!</span></div>
+
+<div class="screen" id="g-sudoku">
+  <h1>🍓 그림 스도쿠</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div><button class="round" id="sdHint">💡</button></div>
+  <div class="boardCard"><div id="sdBoard"></div></div>
+  <div id="sdPalette"></div>
+</div>
+
+<div class="screen" id="g-rush">
+  <h1>🚗 주차장 탈출</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div><button class="round" id="rushReset">🔄</button></div>
+  <div class="boardCard" id="rushWrap"><div id="rushBoard"></div><div id="rushExit">➡️🥕</div></div>
+</div>
+
+<div class="screen" id="g-flow">
+  <h1>🎨 동물 짝 잇기</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div><button class="round" id="flowReset">🔄</button></div>
+  <div class="boardCard"><div id="flowBoard"></div></div>
+</div>
+
+<div class="screen" id="g-soko">
+  <h1>🍪 쿠키 밀기</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div>
+    <button class="round" id="sokoUndo">↩️</button><button class="round" id="sokoReset">🔄</button></div>
+  <div class="boardCard"><div id="sokoBoard"></div></div>
+  <div id="dpad"></div>
+</div>
+
+<div id="mascot"><span class="face" id="mFace">🐰</span><span class="say" id="mSay">어떤 퍼즐 할까?</span></div>
 
 <div id="win">
   <div class="big" id="winEmoji">🎉</div>
   <h2>참 잘했어요!</h2>
-  <button id="nextBtn">다음 레벨 ➜</button>
+  <button class="bigBtn" id="nextBtn">다음 레벨 ➜</button>
+  <button class="bigBtn alt" id="homeBtn">🏠 홈으로</button>
 </div>
 <canvas id="confetti"></canvas>
 
 <script>
 'use strict';
-const SYMBOLS = [
-  ['🍓','🍊','🍋','🫐','🍇','🍉'],
-  ['🐰','🐱','🐶','🐻','🐼','🦊'],
-  ['🌸','🌷','🌼','🌻','🌺','💐'],
-  ['🐠','🐙','🦀','🐬','🐢','⭐'],
-  ['🦄','🌈','⭐','💖','🍭','👑'],
-];
-const LEVELS = [
-  {size:4, blanks:4}, {size:4, blanks:5}, {size:4, blanks:6},
-  {size:4, blanks:8}, {size:4, blanks:10},
-  {size:6, blanks:8}, {size:6, blanks:12}, {size:6, blanks:16},
-  {size:6, blanks:20}, {size:6, blanks:24},
-];
+// ---------- shared ----------
+const $ = s=>document.querySelector(s);
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+const rnd = a => a[Math.floor(Math.random()*a.length)];
 const CHEERS = ['우와, 맞았어! 💕','정말 잘한다! ✨','딩동댕~ 🎵','천재인가봐! 🌟','최고야! 💖'];
 const OOPS = ['음~ 다시 한번 볼까? 🤔','괜찮아, 다시 해보자! 💪','거의 다 왔어! 🍀'];
+function say(txt, face){ $('#mSay').textContent=txt; if(face) $('#mFace').textContent=face; }
 
-let level = +(localStorage.getItem('sudokuLevel')||0);
-let soundOn = true;
-let sol=[], grid=[], size=4, syms=[], selCell=null, selSym=null, remaining=0;
-
-// ---------- puzzle generation ----------
-const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
-
-function makeSolution(n){
-  const boxH=2, boxW=n/2; // 4x4 -> 2x2 boxes, 6x6 -> 2x3 boxes
-  let g=[...Array(n)].map((_,r)=>[...Array(n)].map((_,c)=>(r*boxW+Math.floor(r/boxH)+c)%n));
-  const map = shuffle([...Array(n).keys()]);
-  g = g.map(row=>row.map(v=>map[v]));
-  // shuffle rows within bands, then bands
-  const bandOrder = shuffle([...Array(n/boxH).keys()]);
-  let rows=[];
-  for(const b of bandOrder){ rows.push(...shuffle([b*boxH, b*boxH+1])); }
-  g = rows.map(r=>g[r]);
-  // shuffle cols within stacks, then stacks
-  const stackOrder = shuffle([...Array(n/boxW).keys()]);
-  let cols=[];
-  for(const s of stackOrder){ cols.push(...shuffle([...Array(boxW).keys()].map(i=>s*boxW+i))); }
-  return g.map(row=>cols.map(c=>row[c]));
-}
-
-function countSolutions(g, n, limit){
-  const boxH=2, boxW=n/2;
-  let count=0;
-  (function solve(){
-    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
-      if(g[r][c]===-1){
-        for(let v=0;v<n;v++){
-          let ok=true;
-          for(let i=0;i<n;i++) if(g[r][i]===v||g[i][c]===v){ok=false;break;}
-          if(ok){
-            const r0=Math.floor(r/boxH)*boxH, c0=Math.floor(c/boxW)*boxW;
-            for(let i=r0;i<r0+boxH&&ok;i++) for(let j=c0;j<c0+boxW;j++) if(g[i][j]===v){ok=false;break;}
-          }
-          if(ok){ g[r][c]=v; solve(); g[r][c]=-1; if(count>=limit) return; }
-        }
-        return;
-      }
-    }
-    count++;
-  })();
-  return count;
-}
-
-function makePuzzle(n, blanks){
-  sol = makeSolution(n);
-  grid = sol.map(r=>[...r]);
-  const cells = shuffle([...Array(n*n).keys()]);
-  let removed=0;
-  for(const idx of cells){
-    if(removed>=blanks) break;
-    const r=Math.floor(idx/n), c=idx%n, keep=grid[r][c];
-    grid[r][c]=-1;
-    if(countSolutions(grid.map(x=>[...x]), n, 2)===1) removed++;
-    else grid[r][c]=keep;
-  }
-  remaining = removed;
-}
-
-// ---------- sound (Web Audio) ----------
-let AC=null;
+let soundOn = true, AC=null;
 function beep(freq, dur, delay=0, type='sine', vol=.18){
   if(!soundOn) return;
   AC = AC || new (window.AudioContext||window.webkitAudioContext)();
@@ -192,123 +196,66 @@ function beep(freq, dur, delay=0, type='sine', vol=.18){
   g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
   o.connect(g).connect(AC.destination); o.start(t); o.stop(t+dur);
 }
-const sndPick   = ()=>beep(660,.08,0,'triangle');
-const sndRight  = ()=>{beep(660,.12); beep(990,.18,.09);};
-const sndWrong  = ()=>{beep(220,.25,0,'square',.08); beep(180,.3,.12,'square',.08);};
-const sndHint   = ()=>{beep(880,.1); beep(1175,.15,.08);};
+const sndPick  = ()=>beep(660,.08,0,'triangle');
+const sndRight = ()=>{beep(660,.12); beep(990,.18,.09);};
+const sndWrong = ()=>{beep(220,.25,0,'square',.08); beep(180,.3,.12,'square',.08);};
+const sndHint  = ()=>{beep(880,.1); beep(1175,.15,.08);};
+const sndStep  = ()=>beep(500,.05,0,'triangle',.08);
 function sndWin(){ [523,659,784,1047,1319].forEach((f,i)=>beep(f,.35,i*.13,'triangle',.22)); }
+$('#sndBtn').onclick=function(){ soundOn=!soundOn; this.textContent=soundOn?'🔊':'🔇'; };
 
-// ---------- UI ----------
-const board=document.getElementById('board'), palette=document.getElementById('palette');
-const mSay=document.getElementById('mSay'), mFace=document.getElementById('mFace');
+const getLvl = k => +(localStorage.getItem('lvl_'+k) || (k==='sudoku' ? localStorage.getItem('sudokuLevel')||0 : 0));
+const setLvl = (k,v) => localStorage.setItem('lvl_'+k, v);
 
-function say(txt, face){ mSay.textContent=txt; if(face) mFace.textContent=face; }
-
-function render(){
-  const cfg = LEVELS[Math.min(level, LEVELS.length-1)];
-  size = cfg.size;
-  syms = SYMBOLS[level % SYMBOLS.length].slice(0, size);
-  makePuzzle(size, cfg.blanks);
-  selCell=null; selSym=null;
-
-  document.getElementById('lvLabel').textContent = '레벨 ' + (level+1);
-  document.getElementById('stars').textContent = '⭐'.repeat(Math.min(level,10)) || '​';
-  const cs = Math.min( (Math.min(window.innerWidth, 480) - 80) / size, 78 );
-  board.style.setProperty('--cs', cs+'px');
-  board.style.gridTemplateColumns = `repeat(${size}, auto)`;
-  board.innerHTML='';
-  const boxW=size/2;
-  for(let r=0;r<size;r++) for(let c=0;c<size;c++){
-    const d=document.createElement('div');
-    d.className='cell ' + (grid[r][c]===-1?'empty':'given');
-    if((c+1)%boxW===0 && c!==size-1) d.classList.add('gapR');
-    if((r+1)%2===0 && r!==size-1) d.classList.add('gapB');
-    d.textContent = grid[r][c]===-1 ? '' : syms[grid[r][c]];
-    d.dataset.r=r; d.dataset.c=c;
-    if(grid[r][c]===-1) d.onclick=()=>pickCell(d);
-    board.appendChild(d);
-  }
-  palette.innerHTML='';
-  syms.forEach((s,v)=>{
-    const b=document.createElement('button');
-    b.className='pal'; b.textContent=s;
-    b.onclick=()=>pickSym(b,v);
-    palette.appendChild(b);
+// screens
+let cur=null;
+const GAMES={};
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  $('#'+id).classList.add('on');
+}
+function goHome(){
+  cur=null; show('home');
+  document.querySelectorAll('.gcard').forEach(c=>{
+    const n=getLvl(c.dataset.g);
+    c.querySelector('.pg').textContent = n ? '⭐ '+n : '아직 안 했어요';
   });
-  say('그림을 골라서 빈칸을 채워봐!', '🐰');
+  say('어떤 퍼즐 할까?', '🐰');
+}
+document.querySelectorAll('.gcard').forEach(c=>c.onclick=()=>{ sndPick(); startGame(c.dataset.g); });
+document.querySelectorAll('.back').forEach(b=>b.onclick=()=>{ sndPick(); goHome(); });
+function startGame(key){
+  cur=GAMES[key]; show('g-'+key);
+  $('#g-'+key+' .lv').textContent = '레벨 ' + (getLvl(key)+1);
+  cur.start(getLvl(key));
 }
 
-function pickCell(d){
-  sndPick();
-  if(selCell) selCell.classList.remove('sel');
-  selCell=d; d.classList.add('sel');
-  if(selSym!==null) tryPlace();
-}
-function pickSym(b,v){
-  sndPick();
-  [...palette.children].forEach(x=>x.classList.remove('selP'));
-  b.classList.add('selP'); selSym=v;
-  if(selCell) tryPlace();
-}
-function tryPlace(){
-  const r=+selCell.dataset.r, c=+selCell.dataset.c;
-  if(sol[r][c]===selSym){
-    grid[r][c]=selSym;
-    selCell.textContent=syms[selSym];
-    selCell.className='cell pop';
-    selCell.onclick=null;
-    selCell=null; remaining--;
-    sndRight();
-    say(CHEERS[Math.floor(Math.random()*CHEERS.length)], '🐰');
-    if(remaining===0) win();
-  }else{
-    sndWrong();
-    selCell.classList.add('shake');
-    const el=selCell;
-    setTimeout(()=>el.classList.remove('shake'), 450);
-    say(OOPS[Math.floor(Math.random()*OOPS.length)], '🐻');
-  }
-}
-
-document.getElementById('hintBtn').onclick=()=>{
-  const empties=[...board.children].filter(d=>d.classList.contains('empty'));
-  if(!empties.length) return;
-  const d=empties[Math.floor(Math.random()*empties.length)];
-  const r=+d.dataset.r, c=+d.dataset.c;
-  grid[r][c]=sol[r][c];
-  d.textContent=syms[sol[r][c]];
-  d.className='cell pop'; d.onclick=null;
-  if(selCell===d) selCell=null;
-  remaining--; sndHint();
-  say('토끼가 살짝 도와줬어! 🤫', '🐰');
-  if(remaining===0) win();
-};
-document.getElementById('sndBtn').onclick=function(){
-  soundOn=!soundOn; this.textContent=soundOn?'🔊':'🔇';
-};
-document.getElementById('nextBtn').onclick=()=>{
-  document.getElementById('win').classList.remove('show');
-  level++;
-  localStorage.setItem('sudokuLevel', level);
-  render();
-};
-
-// ---------- win + confetti ----------
+// win overlay + confetti
 function win(){
   sndWin();
-  document.getElementById('winEmoji').textContent = ['🎉','🎀','🌈','👑','💖'][level%5];
-  setTimeout(()=>document.getElementById('win').classList.add('show'), 400);
+  $('#winEmoji').textContent = rnd(['🎉','🎀','🌈','👑','💖']);
+  setTimeout(()=>$('#win').classList.add('show'), 500);
   confetti();
 }
-const cvs=document.getElementById('confetti'), ctx=cvs.getContext('2d');
+$('#nextBtn').onclick=()=>{
+  $('#win').classList.remove('show');
+  const key = cur.key;
+  setLvl(key, getLvl(key)+1);
+  startGame(key);
+};
+$('#homeBtn').onclick=()=>{
+  $('#win').classList.remove('show');
+  setLvl(cur.key, getLvl(cur.key)+1);
+  goHome();
+};
+const cvs=$('#confetti'), ctx=cvs.getContext('2d');
 function confetti(){
   cvs.width=innerWidth; cvs.height=innerHeight;
   const colors=['#ff7bac','#8ec9ff','#ffd93d','#63c97a','#c39bd3'];
   const parts=[...Array(120)].map(()=>({
     x:Math.random()*cvs.width, y:-20-Math.random()*cvs.height*.5,
     w:6+Math.random()*8, vy:2+Math.random()*3, vx:(Math.random()-.5)*2,
-    rot:Math.random()*6, vr:(Math.random()-.5)*.3,
-    col:colors[Math.floor(Math.random()*colors.length)]
+    rot:Math.random()*6, vr:(Math.random()-.5)*.3, col:rnd(colors)
   }));
   const t0=performance.now();
   (function tick(t){
@@ -324,7 +271,522 @@ function confetti(){
   })(t0);
 }
 
-// ---------- background floaters ----------
+// ================= SUDOKU =================
+(function(){
+  const SYMBOLS = [
+    ['🍓','🍊','🍋','🫐','🍇','🍉'],
+    ['🐰','🐱','🐶','🐻','🐼','🦊'],
+    ['🌸','🌷','🌼','🌻','🌺','💐'],
+    ['🐠','🐙','🦀','🐬','🐢','⭐'],
+    ['🦄','🌈','⭐','💖','🍭','👑'],
+  ];
+  const LEVELS = [
+    {size:4, blanks:4}, {size:4, blanks:5}, {size:4, blanks:6},
+    {size:4, blanks:8}, {size:4, blanks:10},
+    {size:6, blanks:8}, {size:6, blanks:12}, {size:6, blanks:16},
+    {size:6, blanks:20}, {size:6, blanks:24},
+  ];
+  let sol=[], grid=[], size=4, syms=[], selCell=null, selSym=null, remaining=0;
+
+  function makeSolution(n){
+    const boxH=2, boxW=n/2;
+    let g=[...Array(n)].map((_,r)=>[...Array(n)].map((_,c)=>(r*boxW+Math.floor(r/boxH)+c)%n));
+    const map = shuffle([...Array(n).keys()]);
+    g = g.map(row=>row.map(v=>map[v]));
+    const bandOrder = shuffle([...Array(n/boxH).keys()]);
+    let rows=[];
+    for(const b of bandOrder){ rows.push(...shuffle([b*boxH, b*boxH+1])); }
+    g = rows.map(r=>g[r]);
+    const stackOrder = shuffle([...Array(n/boxW).keys()]);
+    let cols=[];
+    for(const s of stackOrder){ cols.push(...shuffle([...Array(boxW).keys()].map(i=>s*boxW+i))); }
+    return g.map(row=>cols.map(c=>row[c]));
+  }
+  function countSolutions(g, n, limit){
+    const boxH=2, boxW=n/2;
+    let count=0;
+    (function solve(){
+      for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+        if(g[r][c]===-1){
+          for(let v=0;v<n;v++){
+            let ok=true;
+            for(let i=0;i<n;i++) if(g[r][i]===v||g[i][c]===v){ok=false;break;}
+            if(ok){
+              const r0=Math.floor(r/boxH)*boxH, c0=Math.floor(c/boxW)*boxW;
+              for(let i=r0;i<r0+boxH&&ok;i++) for(let j=c0;j<c0+boxW;j++) if(g[i][j]===v){ok=false;break;}
+            }
+            if(ok){ g[r][c]=v; solve(); g[r][c]=-1; if(count>=limit) return; }
+          }
+          return;
+        }
+      }
+      count++;
+    })();
+    return count;
+  }
+  function makePuzzle(n, blanks){
+    sol = makeSolution(n);
+    grid = sol.map(r=>[...r]);
+    const cells = shuffle([...Array(n*n).keys()]);
+    let removed=0;
+    for(const idx of cells){
+      if(removed>=blanks) break;
+      const r=Math.floor(idx/n), c=idx%n, keep=grid[r][c];
+      grid[r][c]=-1;
+      if(countSolutions(grid.map(x=>[...x]), n, 2)===1) removed++;
+      else grid[r][c]=keep;
+    }
+    remaining = removed;
+  }
+  const board=$('#sdBoard'), palette=$('#sdPalette');
+  function start(level){
+    const cfg = LEVELS[Math.min(level, LEVELS.length-1)];
+    size = cfg.size;
+    syms = SYMBOLS[level % SYMBOLS.length].slice(0, size);
+    makePuzzle(size, cfg.blanks);
+    selCell=null; selSym=null;
+    const cs = Math.min((Math.min(innerWidth,480)-80)/size, 78);
+    board.style.setProperty('--cs', cs+'px');
+    board.style.gridTemplateColumns = `repeat(${size}, auto)`;
+    board.innerHTML='';
+    const boxW=size/2;
+    for(let r=0;r<size;r++) for(let c=0;c<size;c++){
+      const d=document.createElement('div');
+      d.className='cell ' + (grid[r][c]===-1?'empty':'given');
+      if((c+1)%boxW===0 && c!==size-1) d.classList.add('gapR');
+      if((r+1)%2===0 && r!==size-1) d.classList.add('gapB');
+      d.textContent = grid[r][c]===-1 ? '' : syms[grid[r][c]];
+      d.dataset.r=r; d.dataset.c=c;
+      if(grid[r][c]===-1) d.onclick=()=>pickCell(d);
+      board.appendChild(d);
+    }
+    palette.innerHTML='';
+    syms.forEach((s,v)=>{
+      const b=document.createElement('button');
+      b.className='pal'; b.textContent=s;
+      b.onclick=()=>pickSym(b,v);
+      palette.appendChild(b);
+    });
+    say('그림을 골라서 빈칸을 채워봐!', '🐰');
+  }
+  function pickCell(d){
+    sndPick();
+    if(selCell) selCell.classList.remove('sel');
+    selCell=d; d.classList.add('sel');
+    if(selSym!==null) tryPlace();
+  }
+  function pickSym(b,v){
+    sndPick();
+    [...palette.children].forEach(x=>x.classList.remove('selP'));
+    b.classList.add('selP'); selSym=v;
+    if(selCell) tryPlace();
+  }
+  function tryPlace(){
+    const r=+selCell.dataset.r, c=+selCell.dataset.c;
+    if(sol[r][c]===selSym){
+      grid[r][c]=selSym;
+      selCell.textContent=syms[selSym];
+      selCell.className='cell pop';
+      selCell.onclick=null;
+      selCell=null; remaining--;
+      sndRight(); say(rnd(CHEERS), '🐰');
+      if(remaining===0) win();
+    }else{
+      sndWrong();
+      const el=selCell;
+      el.classList.add('shake');
+      setTimeout(()=>el.classList.remove('shake'), 450);
+      say(rnd(OOPS), '🐻');
+    }
+  }
+  $('#sdHint').onclick=()=>{
+    const empties=[...board.children].filter(d=>d.classList.contains('empty'));
+    if(!empties.length) return;
+    const d=rnd(empties);
+    const r=+d.dataset.r, c=+d.dataset.c;
+    grid[r][c]=sol[r][c];
+    d.textContent=syms[sol[r][c]];
+    d.className='cell pop'; d.onclick=null;
+    if(selCell===d) selCell=null;
+    remaining--; sndHint();
+    say('토끼가 살짝 도와줬어! 🤫', '🐰');
+    if(remaining===0) win();
+  };
+  GAMES.sudoku={key:'sudoku', start};
+})();
+
+// ================= RUSH HOUR =================
+(function(){
+  // first piece = hero (row 2, horizontal). d:'h'|'v', l:length
+  const LEVELS=[
+    [{r:2,c:2,l:2,d:'h'},{r:3,c:4,l:2,d:'v'}],
+    [{r:2,c:0,l:2,d:'h'},{r:2,c:3,l:2,d:'v'}],
+    [{r:2,c:1,l:2,d:'h'},{r:0,c:4,l:3,d:'v'},{r:5,c:0,l:2,d:'h'}],
+    [{r:2,c:0,l:2,d:'h'},{r:1,c:2,l:2,d:'v'},{r:2,c:4,l:2,d:'v'},{r:0,c:0,l:2,d:'h'}],
+    [{r:2,c:1,l:2,d:'h'},{r:1,c:3,l:3,d:'v'},{r:4,c:0,l:2,d:'h'},{r:0,c:4,l:2,d:'h'}],
+    [{r:2,c:0,l:2,d:'h'},{r:2,c:2,l:2,d:'v'},{r:5,c:3,l:2,d:'h'},{r:1,c:4,l:2,d:'v'},{r:0,c:0,l:2,d:'h'},{r:3,c:5,l:3,d:'v'}],
+    [{r:2,c:0,l:2,d:'h'},{r:0,c:3,l:3,d:'v'},{r:3,c:2,l:2,d:'h'},{r:0,c:5,l:2,d:'v'}],
+    [{r:2,c:0,l:2,d:'h'},{r:2,c:2,l:2,d:'v'},{r:4,c:2,l:2,d:'h'},{r:1,c:4,l:2,d:'v'},{r:0,c:3,l:2,d:'h'}],
+    [{r:2,c:0,l:2,d:'h'},{r:1,c:2,l:3,d:'v'},{r:2,c:4,l:2,d:'v'},{r:5,c:2,l:2,d:'h'},{r:0,c:2,l:2,d:'h'},{r:3,c:5,l:2,d:'v'}],
+    [{r:2,c:1,l:2,d:'h'},{r:1,c:3,l:2,d:'v'},{r:2,c:4,l:2,d:'v'},{r:1,c:4,l:2,d:'h'},{r:4,c:1,l:3,d:'h'},{r:3,c:0,l:2,d:'v'},{r:0,c:1,l:2,d:'h'}],
+  ];
+  const FACES=['🐻','🐱','🐶','🦊','🐼','🐨','🐷','🐸'];
+  const COLORS=['#a8d8ff','#ffe9a8','#c7f0c2','#e3c9f5','#ffd7b3','#c2ecf0','#f5d0c9','#d6e5c8'];
+  const board=$('#rushBoard'), wrap=$('#rushWrap');
+  let pieces=[], cs=60, done=false;
+
+  function occ(exclude){
+    const s=new Set();
+    pieces.forEach((p,i)=>{ if(i===exclude) return;
+      for(let k=0;k<p.l;k++) s.add(p.d==='h' ? p.r+','+(p.c+k) : (p.r+k)+','+p.c);
+    });
+    return s;
+  }
+  function start(level){
+    done=false;
+    pieces = LEVELS[level % LEVELS.length].map(p=>({...p}));
+    cs = Math.min((Math.min(innerWidth,480)-90)/6, 62);
+    board.style.setProperty('--rc', cs+'px');
+    board.innerHTML='';
+    for(let i=0;i<36;i++) board.appendChild(Object.assign(document.createElement('div'),{className:'rcell'}));
+    const gap=4;
+    pieces.forEach((p,i)=>{
+      const d=document.createElement('div');
+      d.className='piece'+(i===0?' hero':'');
+      d.style.width = (p.d==='h'? p.l*cs+(p.l-1)*gap : cs)+'px';
+      d.style.height= (p.d==='v'? p.l*cs+(p.l-1)*gap : cs)+'px';
+      d.style.left = 12+p.c*(cs+gap)+'px';
+      d.style.top  = 12+p.r*(cs+gap)+'px';
+      if(i>0) d.style.background = COLORS[i%COLORS.length];
+      d.textContent = i===0 ? '🐰' : FACES[i%FACES.length];
+      d.dataset.i=i;
+      d.addEventListener('pointerdown', dragStart);
+      wrap.appendChild(d);
+    });
+    const exit=$('#rushExit');
+    exit.style.top = 12+2*(cs+gap)+cs*.2+'px';
+    exit.style.right='-14px';
+    say('🐰 토끼차가 나갈 수 있게 길을 만들어줘!', '🐰');
+  }
+  function dragStart(e){
+    if(done) return;
+    const el=e.currentTarget, i=+el.dataset.i, p=pieces[i], gap=4, unit=cs+gap;
+    el.setPointerCapture(e.pointerId);
+    el.classList.add('drag');
+    const o=occ(i);
+    // free slide range in cells
+    let lo=p.d==='h'?p.c:p.r, hi=lo;
+    const fixed = p.d==='h'?p.r:p.c;
+    const cellAt = x => p.d==='h' ? p.r+','+x : x+','+p.c;
+    while(lo>0 && !o.has(cellAt(lo-1))) lo--;
+    while(hi + p.l < 6 && !o.has(cellAt(hi+p.l))) hi++;
+    const startPos = p.d==='h'?p.c:p.r;
+    const startPx = startPos*unit;
+    const sx=e.clientX, sy=e.clientY;
+    function mv(ev){
+      let delta = p.d==='h' ? ev.clientX-sx : ev.clientY-sy;
+      let px = Math.max(lo*unit, Math.min(hi*unit, startPx+delta));
+      el.style[p.d==='h'?'left':'top'] = 12+px+'px';
+    }
+    function up(ev){
+      el.classList.remove('drag');
+      el.removeEventListener('pointermove', mv);
+      el.removeEventListener('pointerup', up);
+      const cur = parseFloat(el.style[p.d==='h'?'left':'top'])-12;
+      const snapped = Math.max(lo, Math.min(hi, Math.round(cur/unit)));
+      el.style[p.d==='h'?'left':'top'] = 12+snapped*unit+'px';
+      const moved = snapped !== startPos;
+      if(p.d==='h') p.c=snapped; else p.r=snapped;
+      if(moved) sndStep();
+      if(i===0 && p.c+p.l===6){ // hero at exit
+        done=true;
+        sndRight();
+        el.classList.add('slideOut');
+        el.style.left = 12+8*unit+'px';
+        say('부릉부릉~ 탈출 성공! 🥕','🐰');
+        setTimeout(win, 500);
+      }
+    }
+    el.addEventListener('pointermove', mv);
+    el.addEventListener('pointerup', up);
+  }
+  $('#rushReset').onclick=()=>{ sndPick(); [...wrap.querySelectorAll('.piece')].forEach(x=>x.remove()); GAMES.rush.start(getLvl('rush')); };
+  GAMES.rush={key:'rush', start:(lv)=>{ [...wrap.querySelectorAll('.piece')].forEach(x=>x.remove()); start(lv); }};
+})();
+
+// ================= FLOW (동물 짝 잇기) =================
+(function(){
+  const ANIMALS=['🐰','🐱','🐶','🦊','🐼','🐻'];
+  const TINT=['#ffd3e4','#ffe9b8','#cdeafc','#d5f2cd','#e6d4f7','#ffd9c4'];
+  const LEVELS=[ // {n:grid, k:pairs}
+    {n:4,k:3},{n:4,k:3},{n:4,k:4},{n:5,k:4},{n:5,k:4},
+    {n:5,k:5},{n:6,k:5},{n:6,k:5},{n:6,k:6},{n:6,k:6},
+  ];
+  const board=$('#flowBoard');
+  let n=4, ends=[], owner={}, paths=[], doneArr=[], active=-1, cells=[];
+
+  function generate(n,k){
+    for(let attempt=0; attempt<800; attempt++){
+      const unvis=new Set();
+      for(let i=0;i<n*n;i++) unvis.add(i);
+      const ps=[];
+      let ok=true;
+      while(unvis.size){
+        const start=rnd([...unvis]);
+        unvis.delete(start);
+        const path=[start];
+        while(true){
+          const last=path[path.length-1], r=Math.floor(last/n), c=last%n;
+          const nb=shuffle([[r-1,c],[r+1,c],[r,c-1],[r,c+1]]
+            .filter(([a,b])=>a>=0&&a<n&&b>=0&&b<n&&unvis.has(a*n+b))
+            .map(([a,b])=>a*n+b));
+          if(!nb.length) break;
+          const nx=nb[0];
+          unvis.delete(nx); path.push(nx);
+        }
+        if(path.length<3){ ok=false; break; }
+        ps.push(path);
+      }
+      if(ok && Math.abs(ps.length-k)<=1) return ps;
+    }
+    return null;
+  }
+  function start(level){
+    const cfg=LEVELS[Math.min(level, LEVELS.length-1)];
+    n=cfg.n;
+    let ps=generate(n,cfg.k);
+    if(!ps){ n=4; ps=generate(4,3); }
+    ends = ps.map(p=>[p[0], p[p.length-1]]);
+    paths = ps.map(()=>[]); doneArr = ps.map(()=>false);
+    owner={}; active=-1;
+    ends.forEach((e,ci)=>{ owner[e[0]]='e'+ci; owner[e[1]]='e'+ci; });
+    const fc = Math.min((Math.min(innerWidth,480)-80)/n, 70);
+    board.style.setProperty('--fc', fc+'px');
+    board.style.gridTemplateColumns=`repeat(${n}, auto)`;
+    board.innerHTML=''; cells=[];
+    for(let i=0;i<n*n;i++){
+      const d=document.createElement('div');
+      d.className='fcell'; d.dataset.i=i;
+      board.appendChild(d); cells.push(d);
+    }
+    board.onpointerdown=pd; board.onpointermove=pm;
+    paint();
+    say('같은 동물 친구끼리 손가락으로 이어줘!', '🐰');
+  }
+  function paint(){
+    cells.forEach(d=>{
+      d.style.background='#fff2f8'; d.textContent=''; d.style.boxShadow='';
+      d.classList.remove('fdone');
+    });
+    paths.forEach((p,ci)=>p.forEach(i=>{ cells[i].style.background=TINT[ci]; }));
+    ends.forEach((e,ci)=>e.forEach(i=>{
+      cells[i].textContent=ANIMALS[ci];
+      cells[i].style.boxShadow='inset 0 0 0 3px '+TINT[ci];
+      if(paths[ci].includes(i)||doneArr[ci]) cells[i].style.background=TINT[ci];
+      if(doneArr[ci]) cells[i].classList.add('fdone');
+    }));
+  }
+  const isEnd=(i,ci)=>ends[ci][0]===i||ends[ci][1]===i;
+  function cellFromEvent(e){
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    if(el&&el.classList.contains('fcell')) return +el.dataset.i;
+    if(el&&el.parentElement&&el.parentElement.classList&&el.parentElement.classList.contains('fcell')) return +el.parentElement.dataset.i;
+    return -1;
+  }
+  function pd(e){
+    const i=cellFromEvent(e);
+    if(i<0) return;
+    const ci=ends.findIndex(en=>en[0]===i||en[1]===i);
+    if(ci>=0){
+      // clear old path of this color
+      paths[ci].forEach(x=>{ if(!isEnd(x,ci)) delete owner[x]; });
+      paths[ci]=[i]; doneArr[ci]=false; active=ci;
+      sndPick(); paint();
+    }
+  }
+  function pm(e){
+    if(active<0||doneArr[active]) return;
+    const i=cellFromEvent(e);
+    if(i<0) return;
+    const ci=active, p=paths[ci], last=p[p.length-1];
+    if(i===last) return;
+    const dr=Math.abs(Math.floor(i/n)-Math.floor(last/n)), dc=Math.abs(i%n-last%n);
+    if(dr+dc!==1) return;
+    if(p.length>1 && i===p[p.length-2]){ // backtrack
+      const rm=p.pop(); if(!isEnd(rm,ci)) delete owner[rm];
+      paint(); return;
+    }
+    const ow=owner[i];
+    if(ow==='e'+ci){ // reached endpoint
+      if(i===p[0]) return;
+      p.push(i); doneArr[ci]=true; active=-1;
+      sndRight(); say(rnd(CHEERS),'🐰'); paint();
+      if(doneArr.every(Boolean)) setTimeout(win, 300);
+      return;
+    }
+    if(ow!==undefined) return; // occupied by other color / endpoint
+    if(p.includes(i)) return;
+    owner[i]='p'+ci; p.push(i);
+    paint();
+  }
+  document.addEventListener('pointerup', ()=>{ active=-1; });
+  $('#flowReset').onclick=()=>{
+    sndPick();
+    paths.forEach((p,ci)=>{ p.forEach(x=>{ if(!isEnd(x,ci)) delete owner[x]; }); paths[ci]=[]; doneArr[ci]=false; });
+    paint();
+  };
+  GAMES.flow={key:'flow', start};
+})();
+
+// ================= SOKOBAN (쿠키 밀기) =================
+(function(){
+  const LEVELS=[
+["#######",
+ "#     #",
+ "# @$o #",
+ "#     #",
+ "#######"],
+["#####",
+ "#   #",
+ "# @ #",
+ "# $ #",
+ "# o #",
+ "#####"],
+["######",
+ "#  o #",
+ "#  $ #",
+ "#    #",
+ "# @  #",
+ "######"],
+["#######",
+ "#     #",
+ "# $ o #",
+ "# @   #",
+ "# $ o #",
+ "#######"],
+["#######",
+ "#   o #",
+ "# $   #",
+ "# @$  #",
+ "#   o #",
+ "#######"],
+["########",
+ "#      #",
+ "# $  o #",
+ "#  $   #",
+ "# @  o #",
+ "########"],
+["#########",
+ "#   @   #",
+ "# $ $ $ #",
+ "#       #",
+ "# o o o #",
+ "#########"],
+["#######",
+ "# o   #",
+ "#  $  #",
+ "# @ $ #",
+ "#   o #",
+ "#######"],
+["########",
+ "#  o   #",
+ "# $$   #",
+ "# @  o #",
+ "# $  o #",
+ "########"],
+["#########",
+ "#   o   #",
+ "#  $ $  #",
+ "# o@  o #",
+ "#  $ $  #",
+ "#   o   #",
+ "#########"],
+  ];
+  const board=$('#sokoBoard');
+  let walls=new Set(), plates=new Set(), boxes=new Set(), player=[0,0], undoStack=[], W=0,H=0;
+  const K=(r,c)=>r+','+c;
+
+  function start(level){
+    const map=LEVELS[level % LEVELS.length];
+    walls=new Set(); plates=new Set(); boxes=new Set(); undoStack=[];
+    H=map.length; W=map[0].length;
+    map.forEach((row,r)=>[...row].forEach((ch,c)=>{
+      if(ch==='#') walls.add(K(r,c));
+      if(ch==='o'||ch==='*'||ch==='+') plates.add(K(r,c));
+      if(ch==='$'||ch==='*') boxes.add(K(r,c));
+      if(ch==='@'||ch==='+') player=[r,c];
+    }));
+    const sc=Math.min((Math.min(innerWidth,480)-70)/W, 56);
+    board.style.setProperty('--sc', sc+'px');
+    board.style.gridTemplateColumns=`repeat(${W}, auto)`;
+    render();
+    say('쿠키를 노란 접시까지 밀어줘! 🍪', '🐰');
+  }
+  function render(){
+    board.innerHTML='';
+    for(let r=0;r<H;r++) for(let c=0;c<W;c++){
+      const d=document.createElement('div');
+      const k=K(r,c);
+      d.className='scell '+(walls.has(k)?'wall':plates.has(k)?'plate':'floor');
+      if(boxes.has(k)) d.innerHTML = plates.has(k) ? '<span class="onPlate">🍪</span>' : '🍪';
+      if(player[0]===r&&player[1]===c) d.textContent='🐰';
+      board.appendChild(d);
+    }
+  }
+  function move(dr,dc){
+    const [r,c]=player, nr=r+dr, nc=c+dc, nk=K(nr,nc);
+    if(walls.has(nk)) return;
+    if(boxes.has(nk)){
+      const br=nr+dr, bc=nc+dc, bk=K(br,bc);
+      if(walls.has(bk)||boxes.has(bk)){ sndWrong(); return; }
+      undoStack.push({p:[r,c], b:[...boxes]});
+      boxes.delete(nk); boxes.add(bk);
+      player=[nr,nc];
+      if(plates.has(bk)){ sndRight(); say(rnd(CHEERS),'🐰'); }
+      else sndStep();
+    }else{
+      undoStack.push({p:[r,c], b:[...boxes]});
+      player=[nr,nc]; sndStep();
+    }
+    if(undoStack.length>200) undoStack.shift();
+    render();
+    if([...boxes].every(b=>plates.has(b))) setTimeout(win, 300);
+  }
+  // d-pad
+  const pad=$('#dpad');
+  [['',''],['⬆️','-1,0'],['',''],
+   ['⬅️','0,-1'],['⬇️','1,0'],['➡️','0,1']].forEach(([t,dd])=>{
+    if(!t){ const s=document.createElement('span'); s.className='blank'; pad.appendChild(s); return; }
+    const b=document.createElement('button');
+    b.className='round'; b.textContent=t;
+    b.onclick=()=>{ const [dr,dc]=dd.split(',').map(Number); move(dr,dc); };
+    pad.appendChild(b);
+  });
+  // swipe
+  let sw=null;
+  board.addEventListener('pointerdown',e=>{ sw=[e.clientX,e.clientY]; });
+  board.addEventListener('pointerup',e=>{
+    if(!sw) return;
+    const dx=e.clientX-sw[0], dy=e.clientY-sw[1]; sw=null;
+    if(Math.max(Math.abs(dx),Math.abs(dy))<24) return;
+    if(Math.abs(dx)>Math.abs(dy)) move(0, dx>0?1:-1);
+    else move(dy>0?1:-1, 0);
+  });
+  document.addEventListener('keydown',e=>{
+    if(!$('#g-soko').classList.contains('on')||$('#win').classList.contains('show')) return;
+    const m={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+    if(m){ e.preventDefault(); move(...m); }
+  });
+  $('#sokoUndo').onclick=()=>{
+    const u=undoStack.pop();
+    if(!u) return;
+    player=u.p; boxes=new Set(u.b); sndPick(); render();
+  };
+  $('#sokoReset').onclick=()=>{ sndPick(); start(getLvl('soko')); };
+  GAMES.soko={key:'soko', start};
+})();
+
+// ---------- background + boot ----------
 ['🎈','☁️','🌸','🦋','⭐','☁️','💗','🌸'].forEach((e,i)=>{
   const d=document.createElement('div');
   d.className='float'; d.textContent=e;
@@ -333,11 +795,5 @@ function confetti(){
   d.style.animationDelay=(-Math.random()*20)+'s';
   document.body.appendChild(d);
 });
-
-window.addEventListener('resize', ()=>{ if(!document.getElementById('win').classList.contains('show')) {
-  const cs = Math.min( (Math.min(window.innerWidth, 480) - 80) / size, 78 );
-  board.style.setProperty('--cs', cs+'px');
-}});
-
-render();
+goHome();
 </script>
