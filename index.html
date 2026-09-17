@@ -1,0 +1,343 @@
+<title>두근두근 그림 스도쿠</title>
+<style>
+  :root{
+    --sky1:#ffe6f2; --sky2:#e6f0ff; --card:#fffdfa;
+    --ink:#6b4a6e; --accent:#ff7bac; --accent2:#8ec9ff;
+    --good:#63c97a; --line:#f3c6da;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; font-family:"Comic Sans MS","Segoe UI",'Malgun Gothic',sans-serif;
+    background:linear-gradient(180deg,var(--sky1) 0%,var(--sky2) 100%);
+    color:var(--ink); overflow-x:hidden;
+    display:flex; flex-direction:column; align-items:center;
+    min-height:100vh; user-select:none;
+  }
+  /* floating background bits */
+  .float{position:fixed; font-size:2rem; opacity:.35; pointer-events:none; z-index:0;
+    animation:drift linear infinite;}
+  @keyframes drift{
+    from{transform:translateY(105vh) rotate(-10deg);}
+    to{transform:translateY(-10vh) rotate(10deg);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .float{display:none;}
+    *{animation-duration:.01s !important;}
+  }
+  header{z-index:1; text-align:center; padding:14px 10px 4px;}
+  h1{margin:0; font-size:clamp(1.5rem,5vw,2.2rem); letter-spacing:1px;
+     color:var(--accent); text-shadow:0 2px 0 #fff;}
+  .stars{font-size:1.1rem; min-height:1.5rem; letter-spacing:2px;}
+  .hud{z-index:1; display:flex; gap:10px; align-items:center; margin:4px 0 10px;}
+  .hud .lv{background:var(--card); border:3px solid var(--line); border-radius:999px;
+    padding:6px 18px; font-weight:bold; font-size:1.1rem; box-shadow:0 3px 0 var(--line);}
+  button.round{background:var(--card); border:3px solid var(--line); border-radius:999px;
+    width:46px; height:46px; font-size:1.3rem; cursor:pointer; box-shadow:0 3px 0 var(--line);}
+  button.round:active{transform:translateY(2px); box-shadow:none;}
+
+  #board{z-index:1; display:grid; gap:5px; background:var(--card);
+    padding:12px; border-radius:24px; border:4px solid var(--line);
+    box-shadow:0 8px 24px rgba(255,123,172,.25);}
+  .cell{
+    width:var(--cs); height:var(--cs); border-radius:14px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:calc(var(--cs)*.62); background:#fff2f8; border:2px solid #ffd9ea;
+    cursor:pointer; transition:transform .12s;
+  }
+  .cell.given{background:#fdfdfd; border-color:#e9e4ee; cursor:default;}
+  .cell.empty{border-style:dashed; border-color:var(--accent2); background:#f2f8ff;}
+  .cell.sel{outline:4px solid var(--accent); outline-offset:-2px; transform:scale(1.06);}
+  .cell.brb{border-bottom:none;} /* spacing handled by gap classes below */
+  .gapR{margin-right:8px;} .gapB{margin-bottom:8px;}
+  .cell.pop{animation:pop .35s;}
+  @keyframes pop{0%{transform:scale(.3);}60%{transform:scale(1.25);}100%{transform:scale(1);}}
+  .cell.shake{animation:shake .4s;}
+  @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-7px);}
+    50%{transform:translateX(7px);}75%{transform:translateX(-4px);}}
+
+  #palette{z-index:1; display:flex; gap:10px; margin:16px 0 8px; flex-wrap:wrap; justify-content:center;}
+  .pal{width:60px; height:60px; font-size:2rem; border-radius:18px;
+    background:var(--card); border:3px solid var(--line); cursor:pointer;
+    box-shadow:0 4px 0 var(--line); transition:transform .12s;}
+  .pal:active{transform:translateY(3px); box-shadow:none;}
+  .pal.selP{border-color:var(--accent); background:#fff0f7; transform:scale(1.1);}
+
+  #mascot{z-index:1; display:flex; align-items:center; gap:8px; margin-bottom:20px;
+    background:var(--card); border:3px solid var(--line); border-radius:20px;
+    padding:8px 16px; max-width:90vw;}
+  #mascot .face{font-size:2rem;}
+  #mascot .say{font-size:1rem; font-weight:bold;}
+
+  /* win overlay */
+  #win{position:fixed; inset:0; background:rgba(255,230,242,.85); z-index:5;
+    display:none; flex-direction:column; align-items:center; justify-content:center; gap:14px;}
+  #win.show{display:flex;}
+  #win .big{font-size:3rem; animation:pop .5s;}
+  #win h2{margin:0; font-size:2rem; color:var(--accent);}
+  #win button{font-size:1.3rem; padding:14px 30px; border-radius:999px; cursor:pointer;
+    background:var(--accent); color:#fff; border:none; box-shadow:0 5px 0 #d55a8c; font-family:inherit; font-weight:bold;}
+  #win button:active{transform:translateY(3px); box-shadow:none;}
+  #confetti{position:fixed; inset:0; pointer-events:none; z-index:6;}
+</style>
+
+<header>
+  <h1>🌸 두근두근 그림 스도쿠 🌸</h1>
+  <div class="stars" id="stars"></div>
+</header>
+<div class="hud">
+  <div class="lv" id="lvLabel">레벨 1</div>
+  <button class="round" id="hintBtn" title="힌트">💡</button>
+  <button class="round" id="sndBtn" title="소리">🔊</button>
+</div>
+<div id="board"></div>
+<div id="palette"></div>
+<div id="mascot"><span class="face" id="mFace">🐰</span><span class="say" id="mSay">그림을 골라서 빈칸을 채워봐!</span></div>
+
+<div id="win">
+  <div class="big" id="winEmoji">🎉</div>
+  <h2>참 잘했어요!</h2>
+  <button id="nextBtn">다음 레벨 ➜</button>
+</div>
+<canvas id="confetti"></canvas>
+
+<script>
+'use strict';
+const SYMBOLS = [
+  ['🍓','🍊','🍋','🫐','🍇','🍉'],
+  ['🐰','🐱','🐶','🐻','🐼','🦊'],
+  ['🌸','🌷','🌼','🌻','🌺','💐'],
+  ['🐠','🐙','🦀','🐬','🐢','⭐'],
+  ['🦄','🌈','⭐','💖','🍭','👑'],
+];
+const LEVELS = [
+  {size:4, blanks:4}, {size:4, blanks:5}, {size:4, blanks:6},
+  {size:4, blanks:8}, {size:4, blanks:10},
+  {size:6, blanks:8}, {size:6, blanks:12}, {size:6, blanks:16},
+  {size:6, blanks:20}, {size:6, blanks:24},
+];
+const CHEERS = ['우와, 맞았어! 💕','정말 잘한다! ✨','딩동댕~ 🎵','천재인가봐! 🌟','최고야! 💖'];
+const OOPS = ['음~ 다시 한번 볼까? 🤔','괜찮아, 다시 해보자! 💪','거의 다 왔어! 🍀'];
+
+let level = +(localStorage.getItem('sudokuLevel')||0);
+let soundOn = true;
+let sol=[], grid=[], size=4, syms=[], selCell=null, selSym=null, remaining=0;
+
+// ---------- puzzle generation ----------
+const shuffle = a => { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+function makeSolution(n){
+  const boxH=2, boxW=n/2; // 4x4 -> 2x2 boxes, 6x6 -> 2x3 boxes
+  let g=[...Array(n)].map((_,r)=>[...Array(n)].map((_,c)=>(r*boxW+Math.floor(r/boxH)+c)%n));
+  const map = shuffle([...Array(n).keys()]);
+  g = g.map(row=>row.map(v=>map[v]));
+  // shuffle rows within bands, then bands
+  const bandOrder = shuffle([...Array(n/boxH).keys()]);
+  let rows=[];
+  for(const b of bandOrder){ rows.push(...shuffle([b*boxH, b*boxH+1])); }
+  g = rows.map(r=>g[r]);
+  // shuffle cols within stacks, then stacks
+  const stackOrder = shuffle([...Array(n/boxW).keys()]);
+  let cols=[];
+  for(const s of stackOrder){ cols.push(...shuffle([...Array(boxW).keys()].map(i=>s*boxW+i))); }
+  return g.map(row=>cols.map(c=>row[c]));
+}
+
+function countSolutions(g, n, limit){
+  const boxH=2, boxW=n/2;
+  let count=0;
+  (function solve(){
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+      if(g[r][c]===-1){
+        for(let v=0;v<n;v++){
+          let ok=true;
+          for(let i=0;i<n;i++) if(g[r][i]===v||g[i][c]===v){ok=false;break;}
+          if(ok){
+            const r0=Math.floor(r/boxH)*boxH, c0=Math.floor(c/boxW)*boxW;
+            for(let i=r0;i<r0+boxH&&ok;i++) for(let j=c0;j<c0+boxW;j++) if(g[i][j]===v){ok=false;break;}
+          }
+          if(ok){ g[r][c]=v; solve(); g[r][c]=-1; if(count>=limit) return; }
+        }
+        return;
+      }
+    }
+    count++;
+  })();
+  return count;
+}
+
+function makePuzzle(n, blanks){
+  sol = makeSolution(n);
+  grid = sol.map(r=>[...r]);
+  const cells = shuffle([...Array(n*n).keys()]);
+  let removed=0;
+  for(const idx of cells){
+    if(removed>=blanks) break;
+    const r=Math.floor(idx/n), c=idx%n, keep=grid[r][c];
+    grid[r][c]=-1;
+    if(countSolutions(grid.map(x=>[...x]), n, 2)===1) removed++;
+    else grid[r][c]=keep;
+  }
+  remaining = removed;
+}
+
+// ---------- sound (Web Audio) ----------
+let AC=null;
+function beep(freq, dur, delay=0, type='sine', vol=.18){
+  if(!soundOn) return;
+  AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+  const t = AC.currentTime + delay;
+  const o = AC.createOscillator(), g = AC.createGain();
+  o.type=type; o.frequency.setValueAtTime(freq,t);
+  g.gain.setValueAtTime(vol,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
+  o.connect(g).connect(AC.destination); o.start(t); o.stop(t+dur);
+}
+const sndPick   = ()=>beep(660,.08,0,'triangle');
+const sndRight  = ()=>{beep(660,.12); beep(990,.18,.09);};
+const sndWrong  = ()=>{beep(220,.25,0,'square',.08); beep(180,.3,.12,'square',.08);};
+const sndHint   = ()=>{beep(880,.1); beep(1175,.15,.08);};
+function sndWin(){ [523,659,784,1047,1319].forEach((f,i)=>beep(f,.35,i*.13,'triangle',.22)); }
+
+// ---------- UI ----------
+const board=document.getElementById('board'), palette=document.getElementById('palette');
+const mSay=document.getElementById('mSay'), mFace=document.getElementById('mFace');
+
+function say(txt, face){ mSay.textContent=txt; if(face) mFace.textContent=face; }
+
+function render(){
+  const cfg = LEVELS[Math.min(level, LEVELS.length-1)];
+  size = cfg.size;
+  syms = SYMBOLS[level % SYMBOLS.length].slice(0, size);
+  makePuzzle(size, cfg.blanks);
+  selCell=null; selSym=null;
+
+  document.getElementById('lvLabel').textContent = '레벨 ' + (level+1);
+  document.getElementById('stars').textContent = '⭐'.repeat(Math.min(level,10)) || '​';
+  const cs = Math.min( (Math.min(window.innerWidth, 480) - 80) / size, 78 );
+  board.style.setProperty('--cs', cs+'px');
+  board.style.gridTemplateColumns = `repeat(${size}, auto)`;
+  board.innerHTML='';
+  const boxW=size/2;
+  for(let r=0;r<size;r++) for(let c=0;c<size;c++){
+    const d=document.createElement('div');
+    d.className='cell ' + (grid[r][c]===-1?'empty':'given');
+    if((c+1)%boxW===0 && c!==size-1) d.classList.add('gapR');
+    if((r+1)%2===0 && r!==size-1) d.classList.add('gapB');
+    d.textContent = grid[r][c]===-1 ? '' : syms[grid[r][c]];
+    d.dataset.r=r; d.dataset.c=c;
+    if(grid[r][c]===-1) d.onclick=()=>pickCell(d);
+    board.appendChild(d);
+  }
+  palette.innerHTML='';
+  syms.forEach((s,v)=>{
+    const b=document.createElement('button');
+    b.className='pal'; b.textContent=s;
+    b.onclick=()=>pickSym(b,v);
+    palette.appendChild(b);
+  });
+  say('그림을 골라서 빈칸을 채워봐!', '🐰');
+}
+
+function pickCell(d){
+  sndPick();
+  if(selCell) selCell.classList.remove('sel');
+  selCell=d; d.classList.add('sel');
+  if(selSym!==null) tryPlace();
+}
+function pickSym(b,v){
+  sndPick();
+  [...palette.children].forEach(x=>x.classList.remove('selP'));
+  b.classList.add('selP'); selSym=v;
+  if(selCell) tryPlace();
+}
+function tryPlace(){
+  const r=+selCell.dataset.r, c=+selCell.dataset.c;
+  if(sol[r][c]===selSym){
+    grid[r][c]=selSym;
+    selCell.textContent=syms[selSym];
+    selCell.className='cell pop';
+    selCell.onclick=null;
+    selCell=null; remaining--;
+    sndRight();
+    say(CHEERS[Math.floor(Math.random()*CHEERS.length)], '🐰');
+    if(remaining===0) win();
+  }else{
+    sndWrong();
+    selCell.classList.add('shake');
+    const el=selCell;
+    setTimeout(()=>el.classList.remove('shake'), 450);
+    say(OOPS[Math.floor(Math.random()*OOPS.length)], '🐻');
+  }
+}
+
+document.getElementById('hintBtn').onclick=()=>{
+  const empties=[...board.children].filter(d=>d.classList.contains('empty'));
+  if(!empties.length) return;
+  const d=empties[Math.floor(Math.random()*empties.length)];
+  const r=+d.dataset.r, c=+d.dataset.c;
+  grid[r][c]=sol[r][c];
+  d.textContent=syms[sol[r][c]];
+  d.className='cell pop'; d.onclick=null;
+  if(selCell===d) selCell=null;
+  remaining--; sndHint();
+  say('토끼가 살짝 도와줬어! 🤫', '🐰');
+  if(remaining===0) win();
+};
+document.getElementById('sndBtn').onclick=function(){
+  soundOn=!soundOn; this.textContent=soundOn?'🔊':'🔇';
+};
+document.getElementById('nextBtn').onclick=()=>{
+  document.getElementById('win').classList.remove('show');
+  level++;
+  localStorage.setItem('sudokuLevel', level);
+  render();
+};
+
+// ---------- win + confetti ----------
+function win(){
+  sndWin();
+  document.getElementById('winEmoji').textContent = ['🎉','🎀','🌈','👑','💖'][level%5];
+  setTimeout(()=>document.getElementById('win').classList.add('show'), 400);
+  confetti();
+}
+const cvs=document.getElementById('confetti'), ctx=cvs.getContext('2d');
+function confetti(){
+  cvs.width=innerWidth; cvs.height=innerHeight;
+  const colors=['#ff7bac','#8ec9ff','#ffd93d','#63c97a','#c39bd3'];
+  const parts=[...Array(120)].map(()=>({
+    x:Math.random()*cvs.width, y:-20-Math.random()*cvs.height*.5,
+    w:6+Math.random()*8, vy:2+Math.random()*3, vx:(Math.random()-.5)*2,
+    rot:Math.random()*6, vr:(Math.random()-.5)*.3,
+    col:colors[Math.floor(Math.random()*colors.length)]
+  }));
+  const t0=performance.now();
+  (function tick(t){
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+    for(const p of parts){
+      p.y+=p.vy; p.x+=p.vx; p.rot+=p.vr;
+      ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
+      ctx.fillStyle=p.col; ctx.fillRect(-p.w/2,-p.w/2,p.w,p.w*.6);
+      ctx.restore();
+    }
+    if(t-t0<3500) requestAnimationFrame(tick);
+    else ctx.clearRect(0,0,cvs.width,cvs.height);
+  })(t0);
+}
+
+// ---------- background floaters ----------
+['🎈','☁️','🌸','🦋','⭐','☁️','💗','🌸'].forEach((e,i)=>{
+  const d=document.createElement('div');
+  d.className='float'; d.textContent=e;
+  d.style.left=(5+i*12)+'vw';
+  d.style.animationDuration=(14+Math.random()*14)+'s';
+  d.style.animationDelay=(-Math.random()*20)+'s';
+  document.body.appendChild(d);
+});
+
+window.addEventListener('resize', ()=>{ if(!document.getElementById('win').classList.contains('show')) {
+  const cs = Math.min( (Math.min(window.innerWidth, 480) - 80) / size, 78 );
+  board.style.setProperty('--cs', cs+'px');
+}});
+
+render();
+</script>
