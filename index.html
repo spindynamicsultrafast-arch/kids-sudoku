@@ -280,12 +280,10 @@ function confetti(){
     ['🐠','🐙','🦀','🐬','🐢','⭐'],
     ['🦄','🌈','⭐','💖','🍭','👑'],
   ];
-  const LEVELS = [
-    {size:4, blanks:4}, {size:4, blanks:5}, {size:4, blanks:6},
-    {size:4, blanks:8}, {size:4, blanks:10},
-    {size:6, blanks:8}, {size:6, blanks:12}, {size:6, blanks:16},
-    {size:6, blanks:20}, {size:6, blanks:24},
-  ];
+  // 30 levels: 4x4 with growing blanks, then 6x6
+  const LEVELS = [...Array(30)].map((_,i)=>
+    i<8 ? {size:4, blanks:Math.min(4+i, 11)}
+        : {size:6, blanks:Math.min(6+(i-8), 27)});
   let sol=[], grid=[], size=4, syms=[], selCell=null, selSym=null, remaining=0;
 
   function makeSolution(n){
@@ -417,19 +415,64 @@ function confetti(){
 
 // ================= RUSH HOUR =================
 (function(){
-  // first piece = hero (row 2, horizontal). d:'h'|'v', l:length
-  const LEVELS=[
-    [{r:2,c:2,l:2,d:'h'},{r:3,c:4,l:2,d:'v'}],
-    [{r:2,c:0,l:2,d:'h'},{r:2,c:3,l:2,d:'v'}],
-    [{r:2,c:1,l:2,d:'h'},{r:0,c:4,l:3,d:'v'},{r:5,c:0,l:2,d:'h'}],
-    [{r:2,c:0,l:2,d:'h'},{r:1,c:2,l:2,d:'v'},{r:2,c:4,l:2,d:'v'},{r:0,c:0,l:2,d:'h'}],
-    [{r:2,c:1,l:2,d:'h'},{r:1,c:3,l:3,d:'v'},{r:4,c:0,l:2,d:'h'},{r:0,c:4,l:2,d:'h'}],
-    [{r:2,c:0,l:2,d:'h'},{r:2,c:2,l:2,d:'v'},{r:5,c:3,l:2,d:'h'},{r:1,c:4,l:2,d:'v'},{r:0,c:0,l:2,d:'h'},{r:3,c:5,l:3,d:'v'}],
-    [{r:2,c:0,l:2,d:'h'},{r:0,c:3,l:3,d:'v'},{r:3,c:2,l:2,d:'h'},{r:0,c:5,l:2,d:'v'}],
-    [{r:2,c:0,l:2,d:'h'},{r:2,c:2,l:2,d:'v'},{r:4,c:2,l:2,d:'h'},{r:1,c:4,l:2,d:'v'},{r:0,c:3,l:2,d:'h'}],
-    [{r:2,c:0,l:2,d:'h'},{r:1,c:2,l:3,d:'v'},{r:2,c:4,l:2,d:'v'},{r:5,c:2,l:2,d:'h'},{r:0,c:2,l:2,d:'h'},{r:3,c:5,l:2,d:'v'}],
-    [{r:2,c:1,l:2,d:'h'},{r:1,c:3,l:2,d:'v'},{r:2,c:4,l:2,d:'v'},{r:1,c:4,l:2,d:'h'},{r:4,c:1,l:3,d:'h'},{r:3,c:0,l:2,d:'v'},{r:0,c:1,l:2,d:'h'}],
-  ];
+  // first piece = hero (row 2, horizontal). Levels generated: BFS solver
+  // measures min slides, generator retries until difficulty fits the level.
+  function solveMin(ps){
+    let q=[ps.map(p=>p.d==='h'?p.c:p.r)];
+    const seen=new Set([q[0].join(',')]);
+    for(let depth=0; q.length && depth<40; depth++){
+      const nq=[];
+      for(const pos of q){
+        if(pos[0]+ps[0].l===6) return depth;
+        const occ=new Set();
+        ps.forEach((p,i)=>{ for(let k=0;k<p.l;k++)
+          occ.add(p.d==='h'? p.r+','+(pos[i]+k) : (pos[i]+k)+','+p.c); });
+        ps.forEach((p,i)=>{
+          const at = x => p.d==='h'? p.r+','+x : x+','+p.c;
+          for(let np=pos[i]-1; np>=0 && !occ.has(at(np)); np--){
+            const nx=[...pos]; nx[i]=np; const key=nx.join(',');
+            if(!seen.has(key)){ seen.add(key); nq.push(nx); }
+          }
+          for(let np=pos[i]+1; np+p.l<=6 && !occ.has(at(np+p.l-1)); np++){
+            const nx=[...pos]; nx[i]=np; const key=nx.join(',');
+            if(!seen.has(key)){ seen.add(key); nq.push(nx); }
+          }
+        });
+      }
+      q=nq;
+    }
+    return -1;
+  }
+  function genRush(level){
+    const nV = Math.min(2+Math.floor(level/4), 9);          // extra vehicles
+    const lo = Math.min(1+Math.floor(level/3), 9), hi=lo+3; // target min slides
+    let best=null;
+    for(let t=0;t<400;t++){
+      const ps=[{r:2, c:Math.floor(Math.random()*3), l:2, d:'h'}];
+      const occ=new Set(['2,'+ps[0].c, '2,'+(ps[0].c+1)]);
+      let guard=0;
+      while(ps.length<1+nV && guard++<120){
+        const d=Math.random()<.5?'h':'v', l=Math.random()<.25?3:2;
+        const r=Math.floor(Math.random()*6), c=Math.floor(Math.random()*6);
+        if(d==='h' && r===2) continue;                      // no rivals on exit row
+        if(d==='h' ? c+l>6 : r+l>6) continue;
+        const cells=[];
+        let free=true;
+        for(let k=0;k<l;k++){
+          const key = d==='h' ? r+','+(c+k) : (r+k)+','+c;
+          if(occ.has(key)){ free=false; break; }
+          cells.push(key);
+        }
+        if(!free) continue;
+        cells.forEach(x=>occ.add(x));
+        ps.push({r,c,l,d});
+      }
+      const m=solveMin(ps);
+      if(m>=lo && m<=hi) return ps;
+      if(m>0 && (!best || Math.abs(m-lo)<Math.abs(best.m-lo))) best={ps,m};
+    }
+    return best ? best.ps : [{r:2,c:0,l:2,d:'h'},{r:2,c:3,l:2,d:'v'}];
+  }
   const FACES=['🐻','🐱','🐶','🦊','🐼','🐨','🐷','🐸'];
   const COLORS=['#a8d8ff','#ffe9a8','#c7f0c2','#e3c9f5','#ffd7b3','#c2ecf0','#f5d0c9','#d6e5c8'];
   const board=$('#rushBoard'), wrap=$('#rushWrap');
@@ -442,9 +485,15 @@ function confetti(){
     });
     return s;
   }
+  let layout=[];
   function start(level){
+    layout = genRush(Math.min(level, 29));
+    load();
+  }
+  function load(){
     done=false;
-    pieces = LEVELS[level % LEVELS.length].map(p=>({...p}));
+    pieces = layout.map(p=>({...p}));
+    [...wrap.querySelectorAll('.piece')].forEach(x=>x.remove());
     cs = Math.min((Math.min(innerWidth,480)-90)/6, 62);
     board.style.setProperty('--rc', cs+'px');
     board.innerHTML='';
@@ -510,18 +559,19 @@ function confetti(){
     el.addEventListener('pointermove', mv);
     el.addEventListener('pointerup', up);
   }
-  $('#rushReset').onclick=()=>{ sndPick(); [...wrap.querySelectorAll('.piece')].forEach(x=>x.remove()); GAMES.rush.start(getLvl('rush')); };
-  GAMES.rush={key:'rush', start:(lv)=>{ [...wrap.querySelectorAll('.piece')].forEach(x=>x.remove()); start(lv); }};
+  $('#rushReset').onclick=()=>{ sndPick(); load(); }; // same layout, not a re-generate
+  GAMES.rush={key:'rush', start};
 })();
 
 // ================= FLOW (동물 짝 잇기) =================
 (function(){
   const ANIMALS=['🐰','🐱','🐶','🦊','🐼','🐻'];
   const TINT=['#ffd3e4','#ffe9b8','#cdeafc','#d5f2cd','#e6d4f7','#ffd9c4'];
-  const LEVELS=[ // {n:grid, k:pairs}
-    {n:4,k:3},{n:4,k:3},{n:4,k:4},{n:5,k:4},{n:5,k:4},
-    {n:5,k:5},{n:6,k:5},{n:6,k:5},{n:6,k:6},{n:6,k:6},
-  ];
+  // 30 levels: grid 4→7, pairs 3→6
+  const LEVELS=[...Array(30)].map((_,i)=>({
+    n: i<4?4 : i<12?5 : i<22?6 : 7,
+    k: Math.min(3+Math.floor(i/5), 6),
+  }));
   const board=$('#flowBoard');
   let n=4, ends=[], owner={}, paths=[], doneArr=[], active=-1, cells=[];
 
@@ -640,7 +690,7 @@ function confetti(){
 
 // ================= SOKOBAN (쿠키 밀기) =================
 (function(){
-  const LEVELS=[
+  const HAND=[
 ["#######",
  "#     #",
  "# @$o #",
@@ -703,19 +753,66 @@ function confetti(){
  "#########"],
   ];
   const board=$('#sokoBoard');
-  let walls=new Set(), plates=new Set(), boxes=new Set(), player=[0,0], undoStack=[], W=0,H=0;
+  let walls=new Set(), plates=new Set(), boxes=new Set(), player=[0,0], undoStack=[], W=0,H=0, init=null;
   const K=(r,c)=>r+','+c;
 
+  // levels 11+: reverse-pull generation — start boxes on plates, pull them
+  // backwards with a random walk; replaying pulls as pushes solves it,
+  // so every generated level is solvable by construction.
+  function genSoko(lv){
+    const level = Math.min(lv, 29);
+    const nB = Math.min(2+Math.floor((level-10)/8), 4);
+    const gw = Math.min(6+Math.floor((level-10)/7), 9);
+    const gh = Math.min(5+Math.floor((level-10)/9), 8);
+    const wantPulls = 6+(level-10)*2;
+    const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+    for(let t=0;t<80;t++){
+      const w=new Set();
+      for(let r=0;r<gh;r++) for(let c=0;c<gw;c++)
+        if(r===0||c===0||r===gh-1||c===gw-1) w.add(K(r,c));
+      // a few inner walls
+      for(let i=0;i<Math.floor(gw*gh*.07);i++)
+        w.add(K(1+Math.floor(Math.random()*(gh-2)), 1+Math.floor(Math.random()*(gw-2))));
+      const free=[];
+      for(let r=1;r<gh-1;r++) for(let c=1;c<gw-1;c++) if(!w.has(K(r,c))) free.push([r,c]);
+      if(free.length < nB+3) continue;
+      shuffle(free);
+      const pl=new Set(free.slice(0,nB).map(([r,c])=>K(r,c)));
+      const bx=new Set(pl);
+      let [pr,pc]=free[nB];
+      let pulls=0;
+      for(let s=0; s<wantPulls*10 && pulls<wantPulls; s++){
+        const [dr,dc]=rnd(DIRS);
+        const nk=K(pr+dr,pc+dc);
+        if(w.has(nk)||bx.has(nk)) continue;
+        const bk=K(pr-dr,pc-dc);           // box behind player?
+        if(bx.has(bk) && Math.random()<.7){
+          bx.delete(bk); bx.add(K(pr,pc)); // pull it into player's old cell
+          pulls++;
+        }
+        pr+=dr; pc+=dc;
+      }
+      if([...bx].every(b=>!pl.has(b)) && pulls>=Math.min(wantPulls, nB*2))
+        return {w, pl, bx, player:[pr,pc], gw, gh};
+    }
+    return null; // fall back to hand levels
+  }
   function start(level){
-    const map=LEVELS[level % LEVELS.length];
     walls=new Set(); plates=new Set(); boxes=new Set(); undoStack=[];
-    H=map.length; W=map[0].length;
-    map.forEach((row,r)=>[...row].forEach((ch,c)=>{
-      if(ch==='#') walls.add(K(r,c));
-      if(ch==='o'||ch==='*'||ch==='+') plates.add(K(r,c));
-      if(ch==='$'||ch==='*') boxes.add(K(r,c));
-      if(ch==='@'||ch==='+') player=[r,c];
-    }));
+    const g = level>=HAND.length ? genSoko(level) : null;
+    if(g){
+      walls=g.w; plates=g.pl; boxes=g.bx; player=g.player; W=g.gw; H=g.gh;
+    }else{
+      const map=HAND[level % HAND.length];
+      H=map.length; W=map[0].length;
+      map.forEach((row,r)=>[...row].forEach((ch,c)=>{
+        if(ch==='#') walls.add(K(r,c));
+        if(ch==='o'||ch==='*'||ch==='+') plates.add(K(r,c));
+        if(ch==='$'||ch==='*') boxes.add(K(r,c));
+        if(ch==='@'||ch==='+') player=[r,c];
+      }));
+    }
+    init={p:[...player], b:[...boxes]};
     const sc=Math.min((Math.min(innerWidth,480)-70)/W, 56);
     board.style.setProperty('--sc', sc+'px');
     board.style.gridTemplateColumns=`repeat(${W}, auto)`;
@@ -782,7 +879,9 @@ function confetti(){
     if(!u) return;
     player=u.p; boxes=new Set(u.b); sndPick(); render();
   };
-  $('#sokoReset').onclick=()=>{ sndPick(); start(getLvl('soko')); };
+  $('#sokoReset').onclick=()=>{ // same layout, not a re-generate
+    sndPick(); player=[...init.p]; boxes=new Set(init.b); undoStack=[]; render();
+  };
   GAMES.soko={key:'soko', start};
 })();
 
