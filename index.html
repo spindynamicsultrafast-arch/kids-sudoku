@@ -1,3 +1,4 @@
+<meta charset="utf-8">
 <title>두근두근 퍼즐랜드</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
 <style>
@@ -30,12 +31,14 @@
   h1{margin:14px 0 4px; font-size:clamp(1.5rem,5vw,2.2rem); letter-spacing:1px;
      color:var(--accent); text-shadow:0 2px 0 #fff; text-align:center;}
   .hud{display:flex; gap:10px; align-items:center; margin:8px 0 12px; flex-wrap:wrap; justify-content:center;}
-  .hud .lv{background:var(--card); border:3px solid var(--line); border-radius:999px;
+  .hud .lv{user-select:none; -webkit-user-select:none; touch-action:none;
+    background:var(--card); border:3px solid var(--line); border-radius:999px;
     padding:6px 18px; font-weight:bold; font-size:1.1rem; box-shadow:0 3px 0 var(--line);}
   button.round{background:var(--card); border:3px solid var(--line); border-radius:999px;
     width:46px; height:46px; font-size:1.3rem; cursor:pointer; box-shadow:0 3px 0 var(--line); font-family:inherit;}
   button.round:active{transform:translateY(2px); box-shadow:none;}
   #sndBtn{position:fixed; top:10px; right:10px; z-index:4;}
+  #fsBtn{position:fixed; top:10px; right:64px; z-index:4;}
 
   /* home */
   #home .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,170px)); gap:16px;
@@ -60,6 +63,7 @@
     font-size:calc(var(--cs)*.62); background:#fff2f8; border:2px solid #ffd9ea;
     cursor:pointer; transition:transform .12s;
   }
+  #sdBoard.num .cell, #sdPalette.num .pal{font-weight:900; color:#7a4f6b;}
   .cell.given{background:#fdfdfd; border-color:#e9e4ee; cursor:default;}
   .cell.empty{border-style:dashed; border-color:var(--accent2); background:#f2f8ff;}
   .cell.sel{outline:4px solid var(--accent); outline-offset:-2px; transform:scale(1.06);}
@@ -80,10 +84,30 @@
   #rushWrap{position:relative;}
   #rushBoard{position:relative; display:grid; grid-template-columns:repeat(6,var(--rc)); gap:4px;}
   .rcell{width:var(--rc); height:var(--rc); border-radius:10px; background:#fff2f8; border:2px solid #ffd9ea;}
-  .piece{position:absolute; border-radius:14px; display:flex; align-items:center; justify-content:center;
-    font-size:calc(var(--rc)*.6); cursor:grab; border:3px solid rgba(255,255,255,.7);
+  .piece{position:absolute; border-radius:calc(var(--rc)*.28)/calc(var(--rc)*.34);
+    display:flex; align-items:center; justify-content:center;
+    font-size:calc(var(--rc)*.46); cursor:grab; border:3px solid rgba(255,255,255,.7);
+    background-color:var(--car,#ffb1cf); background-repeat:no-repeat;
     box-shadow:0 3px 6px rgba(0,0,0,.12); transition:box-shadow .15s; z-index:2; touch-action:none;}
-  .piece.hero{background:#ffb1cf; z-index:3;}
+  /* cabin: sits under the emoji (z-index:-1 keeps it above the body, below the face) */
+  .piece::before{content:''; position:absolute; z-index:-1; background:rgba(255,255,255,.62);
+    border-radius:calc(var(--rc)*.2);}
+  .piece.h::before{left:calc(50% - var(--rc)*.35); width:calc(var(--rc)*.7); top:14%; bottom:14%;}
+  .piece.v::before{top:calc(50% - var(--rc)*.35); height:calc(var(--rc)*.7); left:14%; right:14%;}
+  /* 4 wheels from one element: box-shadow clones it along the car and across it.
+     --span is axle-to-axle distance, so it depends on car length (--len). */
+  .piece::after{content:''; position:absolute; background:#3a3a44;
+    border-radius:calc(var(--rc)*.05);
+    --span:calc((var(--len) - .66)*var(--rc) + (var(--len) - 1)*4px);}
+  .piece.h::after{width:calc(var(--rc)*.3); height:calc(var(--rc)*.13);
+    left:calc(var(--rc)*.18); top:calc(var(--rc)*-.04);
+    box-shadow:var(--span) 0 0 #3a3a44, 0 calc(var(--rc)*.95) 0 #3a3a44,
+               var(--span) calc(var(--rc)*.95) 0 #3a3a44;}
+  .piece.v::after{width:calc(var(--rc)*.13); height:calc(var(--rc)*.3);
+    top:calc(var(--rc)*.18); left:calc(var(--rc)*-.04);
+    box-shadow:0 var(--span) 0 #3a3a44, calc(var(--rc)*.95) 0 0 #3a3a44,
+               calc(var(--rc)*.95) var(--span) 0 #3a3a44;}
+  .piece.hero{--car:#ffb1cf; z-index:3;}
   .piece.drag{box-shadow:0 8px 16px rgba(0,0,0,.2); cursor:grabbing;}
   #rushExit{position:absolute; font-size:1.6rem; pointer-events:none;}
   .slideOut{transition:left .6s ease-in !important;}
@@ -103,9 +127,40 @@
   .scell.wall{background:linear-gradient(135deg,#ffc4dc,#f9a8c9); border:2px solid #f393bd; border-radius:6px;}
   .scell.plate{background:#fff7fb; box-shadow:inset 0 0 0 4px #ffd93d; }
   .scell .onPlate{filter:drop-shadow(0 0 6px #ffd93d);}
-  #dpad{display:grid; grid-template-columns:repeat(3,56px); gap:6px; margin-top:14px;}
-  #dpad button{height:52px; font-size:1.4rem;}
-  #dpad .blank{visibility:hidden;}
+  #dpad,#mzPad{display:grid; grid-template-columns:repeat(3,56px); gap:6px; margin-top:14px;}
+  #dpad button,#mzPad button{height:52px; font-size:1.4rem;}
+  #dpad .blank,#mzPad .blank{visibility:hidden;}
+
+  /* memory */
+  #memBoard{display:grid; gap:8px; justify-content:center;}
+  .mcard{width:var(--mc); height:var(--mc); border-radius:16px; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; font-size:calc(var(--mc)*.55);
+    background:linear-gradient(145deg,#ffd3e4,#ffb1cf); border:3px solid var(--line);
+    box-shadow:0 4px 0 var(--line);}
+  .mcard.up{background:#fffdfa;}
+  .mcard.done{background:#e8f8e6; border-color:var(--good); cursor:default; opacity:.7;}
+
+  /* maze */
+  #mzBoard{display:grid; border-radius:12px; overflow:hidden;}
+  .zcell{width:var(--zc); height:var(--zc); display:flex; align-items:center;
+    justify-content:center; font-size:calc(var(--zc)*.78);}
+  .zcell.wall{background:#c79bb4;}
+  .zcell.floor{background:#fff6fb;}
+
+  /* odd one out */
+  #oddBoard{display:grid; gap:6px; justify-content:center;}
+  .ocell{width:var(--oc); height:var(--oc); border-radius:14px; background:#fff2f8;
+    border:2px solid #ffd9ea; cursor:pointer; display:flex; align-items:center;
+    justify-content:center; font-size:calc(var(--oc)*.66);}
+  .ocell.got{background:#e8f8e6; border-color:var(--good); cursor:default;}
+
+  /* pattern */
+  #patSeq{display:flex; flex-wrap:wrap; gap:8px; justify-content:center; max-width:420px;}
+  .pcell{width:var(--pc); height:var(--pc); border-radius:14px; background:#fff2f8;
+    border:2px solid #ffd9ea; display:flex; align-items:center; justify-content:center;
+    font-size:calc(var(--pc)*.6);}
+  .pcell.gap{border-style:dashed; border-color:var(--accent); background:#f2f8ff; font-weight:900;}
+  #patOpts{display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:18px;}
 
   /* mascot + overlay */
   #mascot{position:fixed; bottom:10px; left:50%; transform:translateX(-50%);
@@ -127,6 +182,7 @@
   #confetti{position:fixed; inset:0; pointer-events:none; z-index:6;}
 </style>
 
+<button class="round" id="fsBtn">⛶</button>
 <button class="round" id="sndBtn">🔊</button>
 
 <div class="screen on" id="home">
@@ -136,6 +192,10 @@
     <div class="gcard" data-g="rush"><span class="ico">🚗</span><div class="nm">주차장 탈출</div><div class="pg"></div></div>
     <div class="gcard" data-g="flow"><span class="ico">🎨</span><div class="nm">동물 짝 잇기</div><div class="pg"></div></div>
     <div class="gcard" data-g="soko"><span class="ico">🍪</span><div class="nm">쿠키 밀기</div><div class="pg"></div></div>
+    <div class="gcard" data-g="mem"><span class="ico">🎴</span><div class="nm">기억력 짝 맞추기</div><div class="pg"></div></div>
+    <div class="gcard" data-g="maze"><span class="ico">🌀</span><div class="nm">미로 탈출</div><div class="pg"></div></div>
+    <div class="gcard" data-g="pat"><span class="ico">🔎</span><div class="nm">패턴 이어가기</div><div class="pg"></div></div>
+    <div class="gcard" data-g="odd"><span class="ico">🕵️</span><div class="nm">다른 거 찾기</div><div class="pg"></div></div>
   </div>
 </div>
 
@@ -164,6 +224,32 @@
     <button class="round" id="sokoUndo">↩️</button><button class="round" id="sokoReset">🔄</button></div>
   <div class="boardCard"><div id="sokoBoard"></div></div>
   <div id="dpad"></div>
+</div>
+
+<div class="screen" id="g-mem">
+  <h1>🎴 기억력 짝 맞추기</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div><button class="round" id="memReset">🔄</button></div>
+  <div class="boardCard"><div id="memBoard"></div></div>
+</div>
+
+<div class="screen" id="g-maze">
+  <h1>🌀 미로 탈출</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div><button class="round" id="mzReset">🔄</button></div>
+  <div class="boardCard"><div id="mzBoard"></div></div>
+  <div id="mzPad"></div>
+</div>
+
+<div class="screen" id="g-pat">
+  <h1>🔎 패턴 이어가기</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div><button class="round" id="patReset">🔄</button></div>
+  <div class="boardCard"><div id="patSeq"></div></div>
+  <div id="patOpts"></div>
+</div>
+
+<div class="screen" id="g-odd">
+  <h1>🕵️ 다른 거 찾기</h1>
+  <div class="hud"><button class="round back">🏠</button><div class="lv"></div><button class="round" id="oddReset">🔄</button></div>
+  <div class="boardCard"><div id="oddBoard"></div></div>
 </div>
 
 <div id="mascot"><span class="face" id="mFace">🐰</span><span class="say" id="mSay">어떤 퍼즐 할까?</span></div>
@@ -204,6 +290,12 @@ const sndStep  = ()=>beep(500,.05,0,'triangle',.08);
 function sndWin(){ [523,659,784,1047,1319].forEach((f,i)=>beep(f,.35,i*.13,'triangle',.22)); }
 $('#sndBtn').onclick=function(){ soundOn=!soundOn; this.textContent=soundOn?'🔊':'🔇'; };
 
+const fsBtn=$('#fsBtn');
+const goFull = () => document.documentElement.requestFullscreen?.().catch(()=>{});
+fsBtn.onclick=()=>{ sndPick(); document.fullscreenElement ? document.exitFullscreen() : goFull(); };
+document.addEventListener('fullscreenchange',
+  ()=>{ fsBtn.textContent = document.fullscreenElement ? '❌' : '⛶'; });
+
 const getLvl = k => +(localStorage.getItem('lvl_'+k) || (k==='sudoku' ? localStorage.getItem('sudokuLevel')||0 : 0));
 const setLvl = (k,v) => localStorage.setItem('lvl_'+k, v);
 
@@ -224,7 +316,23 @@ function goHome(){
 }
 document.querySelectorAll('.gcard').forEach(c=>c.onclick=()=>{ sndPick(); startGame(c.dataset.g); });
 document.querySelectorAll('.back').forEach(b=>b.onclick=()=>{ sndPick(); goHome(); });
+
+// parent shortcut: press and hold the level pill for ~0.7s to jump to any level
+document.querySelectorAll('.lv').forEach(el=>{
+  el.title='길게 누르면 레벨 이동';
+  let timer=null;
+  const cancel=()=>{ clearTimeout(timer); timer=null; };
+  el.addEventListener('pointerdown', ()=>{
+    timer=setTimeout(()=>{
+      if(!cur) return;
+      const n=parseInt(prompt('레벨 번호 (1-100)', getLvl(cur.key)+1), 10);
+      if(n>=1 && n<=100){ setLvl(cur.key, n-1); startGame(cur.key); }
+    }, 700);
+  });
+  ['pointerup','pointerleave','pointercancel'].forEach(e=>el.addEventListener(e, cancel));
+});
 function startGame(key){
+  goFull();
   cur=GAMES[key]; show('g-'+key);
   $('#g-'+key+' .lv').textContent = '레벨 ' + (getLvl(key)+1);
   cur.start(getLvl(key));
@@ -274,16 +382,23 @@ function confetti(){
 // ================= SUDOKU =================
 (function(){
   const SYMBOLS = [
-    ['🍓','🍊','🍋','🫐','🍇','🍉'],
-    ['🐰','🐱','🐶','🐻','🐼','🦊'],
-    ['🌸','🌷','🌼','🌻','🌺','💐'],
-    ['🐠','🐙','🦀','🐬','🐢','⭐'],
-    ['🦄','🌈','⭐','💖','🍭','👑'],
+    ['🍓','🍊','🍋','🫐','🍇','🍉','🍑','🥝'],
+    ['🐰','🐱','🐶','🐻','🐼','🦊','🐷','🐯'],
+    ['🌸','🌷','🌼','🌻','🌺','💐','🌹','🍀'],
+    ['🐠','🐙','🦀','🐬','🐢','⭐','🐳','🦞'],
+    ['🦄','🌈','⭐','💖','🍭','👑','🎀','🧁'],
   ];
-  // 30 levels: 4x4 with growing blanks, then 6x6
-  const LEVELS = [...Array(30)].map((_,i)=>
-    i<8 ? {size:4, blanks:Math.min(4+i, 11)}
-        : {size:6, blanks:Math.min(6+(i-8), 27)});
+  const DIGITS = ['1','2','3','4','5','6','7','8'];
+  // 100 levels. Numbers take over at level 31, and the board drops back to 4x4
+  // there so the new symbols are learned on an easy grid before it grows again.
+  // ponytail: blank caps (11 on 4x4, 26 on 6x6, 45 on 8x8) are where
+  // unique-solution removal stops succeeding; raising them only burns retries.
+  const LEVELS = [...Array(100)].map((_,i)=>
+    i<8  ? {size:4, blanks:4+i}                                  //   1- 8  pictures
+  : i<30 ? {size:6, blanks:Math.min(6+(i-8), 20)}                //   9-30  pictures
+  : i<36 ? {size:4, blanks:6+(i-30), num:true}                   //  31-36  numbers, small again
+  : i<66 ? {size:6, blanks:Math.min(8+(i-36), 26), num:true}     //  37-66  numbers
+         : {size:8, blanks:Math.min(14+(i-66), 45), num:true});  //  67-100 numbers
   let sol=[], grid=[], size=4, syms=[], selCell=null, selSym=null, remaining=0;
 
   function makeSolution(n){
@@ -340,7 +455,10 @@ function confetti(){
   function start(level){
     const cfg = LEVELS[Math.min(level, LEVELS.length-1)];
     size = cfg.size;
-    syms = SYMBOLS[level % SYMBOLS.length].slice(0, size);
+    const useNum = !!cfg.num;
+    syms = (useNum ? DIGITS : SYMBOLS[level % SYMBOLS.length]).slice(0, size);
+    board.classList.toggle('num', useNum);
+    palette.classList.toggle('num', useNum);
     makePuzzle(size, cfg.blanks);
     selCell=null; selSym=null;
     const cs = Math.min((Math.min(innerWidth,480)-80)/size, 78);
@@ -365,7 +483,7 @@ function confetti(){
       b.onclick=()=>pickSym(b,v);
       palette.appendChild(b);
     });
-    say('그림을 골라서 빈칸을 채워봐!', '🐰');
+    say(useNum ? '숫자를 골라서 빈칸을 채워봐!' : '그림을 골라서 빈칸을 채워봐!', '🐰');
   }
   function pickCell(d){
     sndPick();
@@ -444,10 +562,13 @@ function confetti(){
     return -1;
   }
   function genRush(level){
-    const nV = Math.min(2+Math.floor(level/4), 9);          // extra vehicles
-    const lo = Math.min(1+Math.floor(level/3), 9), hi=lo+3; // target min slides
-    let best=null;
-    for(let t=0;t<400;t++){
+    const nV = Math.min(2+Math.floor(level/7), 13);          // extra vehicles
+    const lo = Math.min(1+Math.floor(level/9), 12), hi=lo+5; // target min slides
+    // ponytail: 6x6 tops out near 20 min-slides and solveMin costs ~10ms, so the
+    // search is time-boxed and falls back to the hardest board it found. Late
+    // levels get their difficulty from vehicle count, not from min-slides.
+    let best=null; const t0=Date.now();
+    for(let t=0;t<400 && Date.now()-t0<250;t++){
       const ps=[{r:2, c:Math.floor(Math.random()*3), l:2, d:'h'}];
       const occ=new Set(['2,'+ps[0].c, '2,'+(ps[0].c+1)]);
       let guard=0;
@@ -469,7 +590,7 @@ function confetti(){
       }
       const m=solveMin(ps);
       if(m>=lo && m<=hi) return ps;
-      if(m>0 && (!best || Math.abs(m-lo)<Math.abs(best.m-lo))) best={ps,m};
+      if(m>0 && (!best || m>best.m)) best={ps,m};  // no band hit: take hardest found
     }
     return best ? best.ps : [{r:2,c:0,l:2,d:'h'},{r:2,c:3,l:2,d:'v'}];
   }
@@ -487,7 +608,7 @@ function confetti(){
   }
   let layout=[];
   function start(level){
-    layout = genRush(Math.min(level, 29));
+    layout = genRush(Math.min(level, 99));
     load();
   }
   function load(){
@@ -495,18 +616,19 @@ function confetti(){
     pieces = layout.map(p=>({...p}));
     [...wrap.querySelectorAll('.piece')].forEach(x=>x.remove());
     cs = Math.min((Math.min(innerWidth,480)-90)/6, 62);
-    board.style.setProperty('--rc', cs+'px');
+    wrap.style.setProperty('--rc', cs+'px');   // pieces are wrap's children, need it too
     board.innerHTML='';
     for(let i=0;i<36;i++) board.appendChild(Object.assign(document.createElement('div'),{className:'rcell'}));
     const gap=4;
     pieces.forEach((p,i)=>{
       const d=document.createElement('div');
-      d.className='piece'+(i===0?' hero':'');
+      d.className='piece '+p.d+(i===0?' hero':'');
+      d.style.setProperty('--len', p.l);   // wheel spacing is length-dependent
       d.style.width = (p.d==='h'? p.l*cs+(p.l-1)*gap : cs)+'px';
       d.style.height= (p.d==='v'? p.l*cs+(p.l-1)*gap : cs)+'px';
       d.style.left = 12+p.c*(cs+gap)+'px';
       d.style.top  = 12+p.r*(cs+gap)+'px';
-      if(i>0) d.style.background = COLORS[i%COLORS.length];
+      if(i>0) d.style.setProperty('--car', COLORS[i%COLORS.length]);
       d.textContent = i===0 ? '🐰' : FACES[i%FACES.length];
       d.dataset.i=i;
       d.addEventListener('pointerdown', dragStart);
@@ -567,10 +689,10 @@ function confetti(){
 (function(){
   const ANIMALS=['🐰','🐱','🐶','🦊','🐼','🐻'];
   const TINT=['#ffd3e4','#ffe9b8','#cdeafc','#d5f2cd','#e6d4f7','#ffd9c4'];
-  // 30 levels: grid 4→7, pairs 3→6
-  const LEVELS=[...Array(30)].map((_,i)=>({
-    n: i<4?4 : i<12?5 : i<22?6 : 7,
-    k: Math.min(3+Math.floor(i/5), 6),
+  // 100 levels: grid 4→9, pairs 3→9
+  const LEVELS=[...Array(100)].map((_,i)=>({
+    n: i<4?4 : i<12?5 : i<22?6 : i<40?7 : i<65?8 : 9,
+    k: Math.min(3+Math.floor(i/11), 9),
   }));
   const board=$('#flowBoard');
   let n=4, ends=[], owner={}, paths=[], doneArr=[], active=-1, cells=[];
@@ -605,7 +727,7 @@ function confetti(){
     const cfg=LEVELS[Math.min(level, LEVELS.length-1)];
     n=cfg.n;
     let ps=generate(n,cfg.k);
-    if(!ps){ n=4; ps=generate(4,3); }
+    if(!ps) ps = generate(n, cfg.k-1) || generate(n, 3) || ((n=4), generate(4,3));
     ends = ps.map(p=>[p[0], p[p.length-1]]);
     paths = ps.map(()=>[]); doneArr = ps.map(()=>false);
     owner={}; active=-1;
@@ -760,10 +882,10 @@ function confetti(){
   // backwards with a random walk; replaying pulls as pushes solves it,
   // so every generated level is solvable by construction.
   function genSoko(lv){
-    const level = Math.min(lv, 29);
-    const nB = Math.min(2+Math.floor((level-10)/8), 4);
-    const gw = Math.min(6+Math.floor((level-10)/7), 9);
-    const gh = Math.min(5+Math.floor((level-10)/9), 8);
+    const level = Math.min(lv, 99);
+    const nB = Math.min(2+Math.floor((level-10)/16), 6);
+    const gw = Math.min(6+Math.floor((level-10)/12), 11);
+    const gh = Math.min(5+Math.floor((level-10)/15), 9);
     const wantPulls = 6+(level-10)*2;
     const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
     for(let t=0;t<80;t++){
@@ -803,7 +925,7 @@ function confetti(){
     if(g){
       walls=g.w; plates=g.pl; boxes=g.bx; player=g.player; W=g.gw; H=g.gh;
     }else{
-      const map=HAND[level % HAND.length];
+      const map=HAND[Math.min(level, HAND.length-1)];
       H=map.length; W=map[0].length;
       map.forEach((row,r)=>[...row].forEach((ch,c)=>{
         if(ch==='#') walls.add(K(r,c));
@@ -883,6 +1005,308 @@ function confetti(){
     sndPick(); player=[...init.p]; boxes=new Set(init.b); undoStack=[]; render();
   };
   GAMES.soko={key:'soko', start};
+})();
+
+// ================= MEMORY (기억력 짝 맞추기) =================
+(function(){
+  const POOL=['🐰','🐱','🐶','🦊','🐼','🐻','🐷','🐸','🐯','🦁','🐮','🐵',
+              '🍓','🍊','🍇','🍉','🍑','🥝','🐔','🦄','🐙'];
+  // 100 levels: 2 pairs -> 18 pairs (the whole pool)
+  const LEVELS=[...Array(100)].map((_,i)=>({pairs: Math.min(2+Math.floor(i/5), POOL.length)}));
+  const board=$('#memBoard');
+  let deck=[], up=[], matched=0, lock=false;
+
+  function start(level){
+    const pairs=LEVELS[Math.min(level, LEVELS.length-1)].pairs;
+    const faces=shuffle([...POOL]).slice(0, pairs);
+    deck=shuffle([...faces, ...faces]);
+    up=[]; matched=0; lock=false;
+    const cols=Math.min(Math.ceil(Math.sqrt(deck.length)), 6);
+    const mc=Math.min((Math.min(innerWidth,480)-80)/cols, 76);
+    board.style.setProperty('--mc', mc+'px');
+    board.style.gridTemplateColumns='repeat('+cols+', auto)';
+    board.innerHTML='';
+    deck.forEach((f,i)=>{
+      const d=document.createElement('div');
+      d.className='mcard';
+      d.onclick=()=>flip(d,i);
+      board.appendChild(d);
+    });
+    say('같은 그림 두 장을 찾아봐! 🎴','🐰');
+  }
+  function flip(el,i){
+    if(lock || el.classList.contains('up') || el.classList.contains('done')) return;
+    el.classList.add('up','pop'); el.textContent=deck[i];
+    setTimeout(()=>el.classList.remove('pop'), 350);
+    sndPick();
+    up.push({el:el, i:i});
+    if(up.length<2) return;
+    const a=up[0], b=up[1]; up=[];
+    if(deck[a.i]===deck[b.i]){
+      a.el.classList.add('done'); b.el.classList.add('done');
+      matched++; sndRight();
+      if(matched===deck.length/2){ setTimeout(win, 400); return; }
+      say(rnd(CHEERS),'🐰');
+    }else{
+      lock=true; sndWrong(); say(rnd(OOPS),'🐰');
+      setTimeout(()=>{
+        [a,b].forEach(x=>{ x.el.classList.remove('up'); x.el.textContent=''; });
+        lock=false;
+      }, 900);
+    }
+  }
+  $('#memReset').onclick=()=>{ sndPick(); start(getLvl('mem')); };
+  GAMES.mem={key:'mem', start:start};
+})();
+
+// ================= MAZE (미로 탈출) =================
+(function(){
+  // 100 levels: maze grows 4 -> 9 cells a side, carrots to collect 1 -> 6
+  const LEVELS=[...Array(100)].map((_,i)=>({
+    n:       Math.min(4+Math.floor(i/11), 9),
+    carrots: Math.min(1+Math.floor(i/17), 6),
+  }));
+  const K=(r,c)=>r+','+c;
+  const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
+  const board=$('#mzBoard');
+  let wall=[], S=0, rab=[1,1], carrots=new Set(), startCar=[];
+
+  // depth-first carve on an n x n cell grid, rendered as (2n+1)^2 with walls between
+  function genMaze(n){
+    const w=[...Array(2*n+1)].map(()=>Array(2*n+1).fill(1));
+    const seen=[...Array(n)].map(()=>Array(n).fill(false));
+    const st=[[0,0]];
+    seen[0][0]=true; w[1][1]=0;
+    while(st.length){
+      const cur=st[st.length-1], r=cur[0], c=cur[1];
+      const nb=shuffle([...DIRS]).map(d=>[r+d[0], c+d[1], d[0], d[1]])
+        .filter(x=>x[0]>=0&&x[0]<n&&x[1]>=0&&x[1]<n&&!seen[x[0]][x[1]]);
+      if(!nb.length){ st.pop(); continue; }
+      const nr=nb[0][0], nc=nb[0][1], dr=nb[0][2], dc=nb[0][3];
+      seen[nr][nc]=true;
+      w[2*r+1+dr][2*c+1+dc]=0;
+      w[2*nr+1][2*nc+1]=0;
+      st.push([nr,nc]);
+    }
+    return w;
+  }
+  // BFS from the rabbit, then scatter carrots among the hardest cells to reach
+  function placeCarrots(w, from, want){
+    const dist=new Map([[K(from[0],from[1]), 0]]), q=[from];
+    for(let i=0;i<q.length;i++){
+      const r=q[i][0], c=q[i][1], d=dist.get(K(r,c));
+      for(const dd of DIRS){
+        const nr=r+dd[0], nc=c+dd[1];
+        if(nr<0||nc<0||nr>=w.length||nc>=w.length||w[nr][nc]) continue;
+        if(dist.has(K(nr,nc))) continue;
+        dist.set(K(nr,nc), d+1); q.push([nr,nc]);
+      }
+    }
+    const far=[...dist.entries()].sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+    // drop only the cells nearest the rabbit, then pick greedily: each carrot goes
+    // as far as possible from the ones already placed, so they spread across the maze
+    const pool=far.slice(0, Math.max(want, Math.ceil(far.length*.7)));
+    const picked=[pool[0]];
+    while(picked.length<want && picked.length<pool.length){
+      let best=null, bestD=-1;
+      for(const k of pool){
+        if(picked.indexOf(k)>=0) continue;
+        const rc=k.split(',').map(Number);
+        let near=Infinity;
+        for(const q of picked){
+          const pq=q.split(',').map(Number);
+          near=Math.min(near, Math.abs(rc[0]-pq[0])+Math.abs(rc[1]-pq[1]));
+        }
+        if(near>bestD){ bestD=near; best=k; }
+      }
+      picked.push(best);
+    }
+    return picked;
+  }
+  function start(level){
+    const cfg=LEVELS[Math.min(level, LEVELS.length-1)];
+    wall=genMaze(cfg.n); S=wall.length;
+    startCar=placeCarrots(wall, [1,1], cfg.carrots);
+    reset();
+    say(cfg.carrots>1 ? '당근 '+cfg.carrots+'개를 모두 모아줘! 🥕' : '당근까지 길을 찾아가 봐! 🥕', '🐰');
+  }
+  function reset(){
+    rab=[1,1]; carrots=new Set(startCar);
+    const zc=Math.min((Math.min(innerWidth,480)-70)/S, 40);
+    board.style.setProperty('--zc', zc+'px');
+    board.style.gridTemplateColumns='repeat('+S+', auto)';
+    render();
+  }
+  function render(){
+    board.innerHTML='';
+    for(let r=0;r<S;r++) for(let c=0;c<S;c++){
+      const d=document.createElement('div');
+      d.className='zcell '+(wall[r][c]?'wall':'floor');
+      if(rab[0]===r && rab[1]===c) d.textContent='🐰';
+      else if(carrots.has(K(r,c))) d.textContent='🥕';
+      board.appendChild(d);
+    }
+  }
+  function move(dr,dc){
+    const nr=rab[0]+dr, nc=rab[1]+dc;
+    if(nr<0||nc<0||nr>=S||nc>=S||wall[nr][nc]) return;
+    rab=[nr,nc];
+    const k=K(nr,nc);
+    if(carrots.has(k)){
+      carrots.delete(k); sndRight();
+      if(!carrots.size){ render(); setTimeout(win, 300); return; }
+      say(rnd(CHEERS),'🐰');
+    }else sndStep();
+    render();
+  }
+  const pad=$('#mzPad');
+  [['',''],['⬆️','-1,0'],['',''],
+   ['⬅️','0,-1'],['⬇️','1,0'],['➡️','0,1']].forEach(function(e){
+    const t=e[0], dd=e[1];
+    if(!t){ const sp=document.createElement('span'); sp.className='blank'; pad.appendChild(sp); return; }
+    const b=document.createElement('button');
+    b.className='round'; b.textContent=t;
+    b.onclick=()=>{ const p=dd.split(',').map(Number); move(p[0],p[1]); };
+    pad.appendChild(b);
+  });
+  let sw=null;
+  board.addEventListener('pointerdown',e=>{ sw=[e.clientX,e.clientY]; });
+  board.addEventListener('pointerup',e=>{
+    if(!sw) return;
+    const dx=e.clientX-sw[0], dy=e.clientY-sw[1]; sw=null;
+    if(Math.max(Math.abs(dx),Math.abs(dy))<24) return;
+    if(Math.abs(dx)>Math.abs(dy)) move(0, dx>0?1:-1);
+    else move(dy>0?1:-1, 0);
+  });
+  document.addEventListener('keydown',e=>{
+    if(!$('#g-maze').classList.contains('on')||$('#win').classList.contains('show')) return;
+    const m={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+    if(m){ e.preventDefault(); move(m[0],m[1]); }
+  });
+  $('#mzReset').onclick=()=>{ sndPick(); reset(); };  // same maze, back to the start
+  GAMES.maze={key:'maze', start:start};
+})();
+
+// ================= PATTERN (패턴 이어가기) =================
+(function(){
+  const POOL=['🍓','🍊','🍋','🍇','🍉','🐰','🐱','🐶','🦊','⭐','💖','🌸','🎀','🍭'];
+  // 100 levels: repeat length 2->6, longer runs, more choices, and from
+  // level 46 the blank sits inside the run instead of at the end.
+  const LEVELS=[...Array(100)].map((_,i)=>({
+    period: Math.min(2+Math.floor(i/20), 6),
+    shown:  Math.min(6+Math.floor(i/10), 14),
+    opts:   Math.min(3+Math.floor(i/16), 6),
+    mid:    i>=45,
+    runs:   i>=80 ? 1 : 2,   // full repeats guaranteed before the blank
+  }));
+  const seqEl=$('#patSeq'), optEl=$('#patOpts');
+  let seq=[], hole=0, answer='';
+
+  function start(level){
+    const cfg=LEVELS[Math.min(level, LEVELS.length-1)];
+    const base=shuffle([...POOL]).slice(0, cfg.period);
+    const len=Math.max(cfg.shown+1, cfg.period*cfg.runs+1);
+    seq=[...Array(len)].map((_,j)=>base[j%cfg.period]);
+    // enough full runs stay visible for the rule to be readable before the blank
+    const first=cfg.period*cfg.runs;
+    hole = cfg.mid ? first+Math.floor(Math.random()*(len-first)) : len-1;
+    answer=seq[hole];
+    // distractors come from the pattern itself first - those are the real choice
+    const inPat=shuffle(base.filter(x=>x!==answer));
+    const outPat=shuffle(POOL.filter(x=>base.indexOf(x)<0));
+    const choices=shuffle([answer].concat(inPat.concat(outPat).slice(0, cfg.opts-1)));
+    seqEl.style.setProperty('--pc', (len>10?42:52)+'px');
+    seqEl.innerHTML='';
+    seq.forEach((sym,j)=>{
+      const d=document.createElement('div');
+      d.className='pcell'+(j===hole?' gap':'');
+      d.textContent = j===hole ? '?' : sym;
+      seqEl.appendChild(d);
+    });
+    optEl.innerHTML='';
+    choices.forEach(ch=>{
+      const b=document.createElement('button');
+      b.className='pal'; b.textContent=ch;
+      b.onclick=()=>pick(b, ch);
+      optEl.appendChild(b);
+    });
+    say('빈칸에 올 것을 골라봐! 🔎','🐰');
+  }
+  function pick(btn, ch){
+    if(ch!==answer){
+      btn.classList.add('shake'); sndWrong(); say(rnd(OOPS),'🐰');
+      setTimeout(()=>btn.classList.remove('shake'), 400);
+      return;
+    }
+    const cell=seqEl.children[hole];
+    cell.classList.remove('gap'); cell.classList.add('pop');
+    cell.textContent=ch;
+    sndRight(); say(rnd(CHEERS),'🐰');
+    optEl.querySelectorAll('.pal').forEach(b=>{ b.disabled=true; });
+    setTimeout(win, 600);
+  }
+  $('#patReset').onclick=()=>{ sndPick(); start(getLvl('pat')); };
+  GAMES.pat={key:'pat', start:start};
+})();
+
+// ================= ODD ONE OUT (다른 거 찾기) =================
+(function(){
+  // tier 0: nothing alike. tier 1: same family. tier 2: hue or shape only.
+  // tier 3: the odd one is the SAME emoji, just tilted - font-independent, and
+  // the angle keeps shrinking, so difficulty does not run out of emoji pairs.
+  const TIERS=[
+    [['🐱','🍓'],['🐶','🍋'],['🦊','⭐'],['🐼','🍇'],['🐸','💖'],['🐰','🍉']],
+    [['🐱','🐶'],['🐰','🐭'],['🦊','🐶'],['🐻','🐼'],['🍊','🍎'],['🐮','🐷']],
+    [['🔵','🟣'],['🟠','🔴'],['🟢','🟩'],['⭐','🌟'],['🍊','🍋'],['💙','💜'],['🟦','🟪']],
+  ];
+  const TILT=['🐰','🐱','🦊','🍓','⭐','🌸','🐻','🍉'];
+  const LEVELS=[...Array(100)].map((_,i)=>({
+    n:       Math.min(3+Math.floor(i/14), 8),                 // grid side 3 -> 8
+    tier:    i<20 ? 0 : i<45 ? 1 : i<70 ? 2 : 3,
+    tilt:    Math.max(8, 24-Math.floor((i-70)/4)*2),          // tier 3 only
+    targets: Math.min(1+Math.floor(i/40), 3),                 // odd ones to find
+  }));
+  const board=$('#oddBoard');
+  let need=0, found=0;
+
+  function start(level){
+    const cfg=LEVELS[Math.min(level, LEVELS.length-1)];
+    const total=cfg.n*cfg.n;
+    need=Math.min(cfg.targets, total-1); found=0;
+    const tilted=cfg.tier===3;
+    const pair=tilted ? null : rnd(TIERS[cfg.tier]);
+    const base=tilted ? rnd(TILT) : pair[0];
+    const odd=tilted ? base : pair[1];
+    const marks=new Set(shuffle([...Array(total).keys()]).slice(0, need));
+    const oc=Math.min((Math.min(innerWidth,480)-80)/cfg.n, 76);
+    board.style.setProperty('--oc', oc+'px');
+    board.style.gridTemplateColumns='repeat('+cfg.n+', auto)';
+    board.innerHTML='';
+    for(let i=0;i<total;i++){
+      const d=document.createElement('div');
+      const isOdd=marks.has(i);
+      d.className='ocell';
+      d.textContent=isOdd?odd:base;
+      if(isOdd && tilted) d.style.transform='rotate('+cfg.tilt+'deg)';
+      d.onclick=()=>pick(d, isOdd);
+      board.appendChild(d);
+    }
+    say(need>1 ? '다른 것 '+need+'개를 모두 찾아봐! 🕵️' : '하나만 다른 것을 찾아봐! 🕵️', '🐰');
+  }
+  function pick(el, isOdd){
+    if(el.classList.contains('got')) return;
+    if(!isOdd){
+      el.classList.add('shake'); sndWrong(); say(rnd(OOPS),'🐰');
+      setTimeout(()=>el.classList.remove('shake'), 400);
+      return;
+    }
+    el.classList.add('got','pop'); found++; sndRight();
+    setTimeout(()=>el.classList.remove('pop'), 350);
+    if(found===need){ setTimeout(win, 400); return; }
+    say(rnd(CHEERS),'🐰');
+  }
+  $('#oddReset').onclick=()=>{ sndPick(); start(getLvl('odd')); };
+  GAMES.odd={key:'odd', start:start};
 })();
 
 // ---------- background + boot ----------
