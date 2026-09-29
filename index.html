@@ -382,6 +382,7 @@ function confetti(){
 // ================= SUDOKU =================
 (function(){
   const SYMBOLS = [
+    ['🩷','🗡️','👑','☂️','⭐','🍰','🍅','🎤'],
     ['👨‍🔧','👸','🦖','🍄','🐢','👻','⭐','🔥'],
     ['🍓','🍊','🍋','🫐','🍇','🍉','🍑','🥝'],
     ['🐰','🐱','🐶','🐻','🐼','🦊','🐷','🐯'],
@@ -457,7 +458,7 @@ function confetti(){
     const cfg = LEVELS[Math.min(level, LEVELS.length-1)];
     size = cfg.size;
     const useNum = !!cfg.num;
-    syms = (useNum ? DIGITS : SYMBOLS[level % SYMBOLS.length]).slice(0, size);
+    syms = (useNum ? DIGITS : rnd(SYMBOLS)).slice(0, size);
     board.classList.toggle('num', useNum);
     palette.classList.toggle('num', useNum);
     makePuzzle(size, cfg.blanks);
