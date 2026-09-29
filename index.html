@@ -387,6 +387,7 @@ function confetti(){
     ['🌸','🌷','🌼','🌻','🌺','💐','🌹','🍀'],
     ['🐠','🐙','🦀','🐬','🐢','⭐','🐳','🦞'],
     ['🦄','🌈','⭐','💖','🍭','👑','🎀','🧁'],
+    ['🍄','⭐','🐢','🔥','👑','🥚','🍌','🏁'],
   ];
   const DIGITS = ['1','2','3','4','5','6','7','8'];
   // 100 levels. Numbers take over at level 31, and the board drops back to 4x4
@@ -1046,7 +1047,7 @@ function confetti(){
       a.el.classList.add('done'); b.el.classList.add('done');
       matched++; sndRight();
       if(matched===deck.length/2){ setTimeout(win, 400); return; }
-      say(rnd(CHEERS),'🐰');
+      say(rnd(CHEERS),'👧');
     }else{
       lock=true; sndWrong(); say(rnd(OOPS),'🐰');
       setTimeout(()=>{
@@ -1069,7 +1070,9 @@ function confetti(){
   const K=(r,c)=>r+','+c;
   const DIRS=[[-1,0],[1,0],[0,-1],[0,1]];
   const board=$('#mzBoard');
-  let wall=[], S=0, rab=[1,1], carrots=new Set(), startCar=[];
+  // makeup loot instead of carrots — each spot gets its own item
+  const ITEMS=['💄','💅','🪞','🧴','👝','🎀'];
+  let wall=[], S=0, rab=[1,1], carrots=new Set(), startCar=[], itemOf=new Map();
 
   // depth-first carve on an n x n cell grid, rendered as (2n+1)^2 with walls between
   function genMaze(n){
@@ -1128,10 +1131,11 @@ function confetti(){
     wall=genMaze(cfg.n); S=wall.length;
     startCar=placeCarrots(wall, [1,1], cfg.carrots);
     reset();
-    say(cfg.carrots>1 ? '당근 '+cfg.carrots+'개를 모두 모아줘! 🥕' : '당근까지 길을 찾아가 봐! 🥕', '🐰');
+    say(cfg.carrots>1 ? '메이크업 아이템 '+cfg.carrots+'개를 모두 모아줘! 💄' : '메이크업 아이템까지 길을 찾아가 봐! 💄', '👧');
   }
   function reset(){
     rab=[1,1]; carrots=new Set(startCar);
+    itemOf=new Map(startCar.map((k,i)=>[k, ITEMS[i%ITEMS.length]]));
     const zc=Math.min((Math.min(innerWidth,480)-70)/S, 40);
     board.style.setProperty('--zc', zc+'px');
     board.style.gridTemplateColumns='repeat('+S+', auto)';
@@ -1142,8 +1146,8 @@ function confetti(){
     for(let r=0;r<S;r++) for(let c=0;c<S;c++){
       const d=document.createElement('div');
       d.className='zcell '+(wall[r][c]?'wall':'floor');
-      if(rab[0]===r && rab[1]===c) d.textContent='🐰';
-      else if(carrots.has(K(r,c))) d.textContent='🥕';
+      if(rab[0]===r && rab[1]===c) d.textContent='👧';
+      else if(carrots.has(K(r,c))) d.textContent=itemOf.get(K(r,c));
       board.appendChild(d);
     }
   }
@@ -1155,7 +1159,7 @@ function confetti(){
     if(carrots.has(k)){
       carrots.delete(k); sndRight();
       if(!carrots.size){ render(); setTimeout(win, 300); return; }
-      say(rnd(CHEERS),'🐰');
+      say(rnd(CHEERS),'👧');
     }else sndStep();
     render();
   }
